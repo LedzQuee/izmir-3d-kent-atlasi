@@ -1,3 +1,5 @@
+import { UIManager } from './ui/UIManager';
+import { clearNearestStops } from './layers/OtobusDuraklariLayer';
 
 window.addEventListener('error', function(event) {
     const errorDiv = document.createElement('div');
@@ -68,6 +70,14 @@ loadTaksiDuraklari(groups.taksiler);
 loadAfetToplanmaAlanlari(groups.afet);
 
 createLegend([
+
+    { name: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', onToggle: v => {
+        UIManager.busStopMode = v;
+        // Kapatildiginda ekrandaki (varsa) otobus duraklarini sil
+        if(!v && window.engineInstance) { 
+            clearNearestStops(window.engineInstance.scene); 
+        }
+    }},
   { id: 'l1', color: '#00aaff', label: 'Havaalanları (5)', initialState: true, onToggle: v => groups.havaalanlari.visible = v },
   { id: 'l2', color: '#ff6600', label: 'Kaplıcalar (3)', initialState: true, onToggle: v => groups.kaplicalar.visible = v },
   { id: 'l3', color: '#00ff88', label: 'Yetiştirme Yurtları (5)', initialState: true, onToggle: v => groups.yetistirme.visible = v },

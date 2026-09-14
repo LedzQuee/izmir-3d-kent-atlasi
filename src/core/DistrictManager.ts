@@ -350,7 +350,7 @@ export class DistrictManager {
         if (!rowsContainer) return;
         
         rowsContainer.innerHTML = '';
-        const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+        const sorted = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0], 'tr-TR'));
         
         sorted.forEach(([name, count]) => {
             if (count === 0) return;

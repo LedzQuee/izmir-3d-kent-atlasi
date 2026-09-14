@@ -1,4 +1,5 @@
 ﻿export class UIManager {
+    static busStopMode: boolean = false;
     static infoBox: HTMLDivElement;
     static loader: HTMLDivElement;
     static toastEl: HTMLDivElement;
