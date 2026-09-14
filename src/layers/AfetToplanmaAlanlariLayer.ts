@@ -30,6 +30,8 @@ export async function loadAfetToplanmaAlanlari(scene: THREE.Object3D) {
     });
 
     instancedMesh.instanceCount = validCount;
+    instancedMesh.instanceMatrix.needsUpdate = true;
+    instancedMesh.computeBoundingSphere();
     // Veriyi InstancedMesh icine gomuyoruz
     instancedMesh.userData = { records: validRecords, layerName: 'Afet Toplanma Alanı' };
     scene.add(instancedMesh);
