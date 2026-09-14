@@ -39,9 +39,29 @@ export class DistrictManager {
         this.initializeApiData();
     }
 
+    
     public update() {
-        // Yeni API mimarisi sayesinde her saniye ekrani tarayip kasmaya gerek kalmadi!
+        // Harita kameralarinda y ekseni (irtifa) uzakligi belirler
+        const altitude = this.camera.position.y;
+        const ZOOM_THRESHOLD = 2800; // Etiketlerin kaybolup, verilerin belirecegi sinir
+
+        if (altitude > ZOOM_THRESHOLD) {
+            // Kus bakisi (Uzakta) -> Sadece Ilce Rozetlerini Goster
+            if (!this.isZoomedOut) {
+                this.districtGroup.visible = true;
+                this.setAllOriginalsVisible(false);
+                this.isZoomedOut = true;
+            }
+        } else {
+            // Yakinlasma (Zoom In) -> Rozetleri Gizle, Altindaki Verileri Erisime Ac
+            if (this.isZoomedOut) {
+                this.districtGroup.visible = false;
+                this.setAllOriginalsVisible(true);
+                this.isZoomedOut = false;
+            }
+        }
     }
+
 
     private initSidebarUI() {
         const existing = document.getElementById('district-sidebar');
@@ -142,62 +162,38 @@ export class DistrictManager {
     }
 
     
+    
+    private isZoomedOut = true;
+
     private buildBrownSpheres() {
         this.districtGroup.clear();
-        
-        // Profesyonel Holografik Sutun Materyali (Dijital Ikiz Konsepti)
-        const mat = new THREE.MeshPhysicalMaterial({ 
-            color: 0x00f0ff,       // Neon Mavi/Cyan
-            emissive: 0x0044ff,    // Icten gelen parlama
-            emissiveIntensity: 0.8,
-            transparent: true,
-            opacity: 0.4,          // Arkasini gosterir
-            roughness: 0.1,
-            metalness: 0.1,
-            transmission: 0.5,     // Cam etkisi
-            side: THREE.DoubleSide
-        });
-
-        // Taban icin ince, parlayan radar halkasi materyali
-        const ringMat = new THREE.MeshBasicMaterial({
-            color: 0x00f0ff,
-            transparent: true,
-            opacity: 0.8,
-            side: THREE.DoubleSide
-        });
 
         this.districtsData.forEach(d => {
             const count = this.apiDistrictCounts.get(d.name) || 0;
             if (count === 0) return;
             
             const [x, y, z] = convertGpsToVector(d.lat, d.lng);
-            
             const targetData = { isDistrict: true, name: d.name, count: count, targetX: x, targetZ: z };
 
-            // 1. Veri Sutunu (Yukseklik = veri sayisi * carpan)
-            const height = Math.max(100, count * 2.5); // Minimum 100 birim yukseklik
-            const geo = new THREE.CylinderGeometry(60, 60, height, 32);
-            const mesh = new THREE.Mesh(geo, mat);
-            // Silindirin alt kismi tam yere (y=0) degmesi icin yuksekliginin yarisi kadar yariçapa kaldiriyoruz
-            mesh.position.set(x, height / 2, z);
-            mesh.userData = targetData;
-            this.districtGroup.add(mesh);
+            // Sade, derinlik testinden muaf (her zaman ustte gorunen) kurumsal etiket
+            const label = `${d.name}  ${count}`;
+            const spriteMat = new THREE.SpriteMaterial({ 
+                map: this.getTextTexture(label),
+                depthTest: false, // Binalarin veya yerin icine girmesini engeller, hep ustte kalir
+                transparent: true
+            });
 
-            // 2. Yerdeki Radar Halkasi (Zemin Vurgusu)
-            const ringGeo = new THREE.RingGeometry(65, 80, 32);
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = -Math.PI / 2; // Yere yatir
-            ring.position.set(x, 5, z); // Yerden cok az yukarida
-            this.districtGroup.add(ring);
-
-            // 3. Havada Asili Modern Etiket (Sutunun tam tepesinde)
-            const label = `${d.name} (${count})`;
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.getTextTexture(label) }));
-            sprite.position.set(x, height + 80, z); // Sutunun 80 birim uzerinde
-            sprite.scale.set(1600, 400, 1);
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(x, 150, z); 
+            sprite.scale.set(1600, 350, 1);
             sprite.userData = targetData;
+            
+            // Etiketler districtGroup icinde toplanir, zoom yapilinca hepsi gizlenir
             this.districtGroup.add(sprite);
         });
+        
+        // Ilk acilista harita uzakta oldugu icin verileri (orijinal noktalari) gizleyelim
+        this.setAllOriginalsVisible(false);
     }
 
 
