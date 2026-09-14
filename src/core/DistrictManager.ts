@@ -89,10 +89,8 @@ export class DistrictManager {
         }
 
         // --- ETIKETLERIN MESAFEYE GORE YUMUSAK SAYDAMLASMASI (SMOOTH FADE) ---
-        const FADE_START = 2200;
-        const FADE_END = 1200;
- // Bu mesafede saydamlasmaya baslar
-        const FADE_END = 1200;   // Bu mesafeden daha yakindaysa tamamen kaybolur
+        const FADE_START = 2200; // Bu mesafede saydamlasmaya baslar
+        const FADE_END = 1200; // Bu mesafeden daha yakindaysa tamamen kaybolur
 
         this.districtGroup.children.forEach(child => {
             if (child.type === 'Sprite') {
