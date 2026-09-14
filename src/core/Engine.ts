@@ -2,7 +2,7 @@
 import { MapControls } from 'three/examples/jsm/controls/MapControls';
 import { fetchNearestStops, clearNearestStops } from '../layers/OtobusDuraklariLayer';
 import { UIManager } from '../ui/UIManager';
-import { ClusterManager } from './ClusterManager';
+import { DistrictManager } from './DistrictManager';
 
 export class Engine {
   public scene: THREE.Scene;
@@ -13,7 +13,7 @@ export class Engine {
   private raycaster: THREE.Raycaster;
   private mouse: THREE.Vector2;
   private pointerDownPos: THREE.Vector2;
-  private clusterManager: ClusterManager;
+  private districtManager: DistrictManager;
 
   constructor() {
     // 3. UI TEMIZLIGI: Spagetti DOM'dan kurtulduk. Merkezi UI'i baslatiyoruz.
@@ -55,9 +55,9 @@ export class Engine {
 
     window.addEventListener('resize', this.onWindowResize.bind(this));
     this.controls.addEventListener('change', () => this.clusterManager.update());
-    setTimeout(() => this.clusterManager.update(), 1500);
+    setTimeout(() => this.districtManager.update(), 1500);
 
-    this.clusterManager = new ClusterManager(this.scene, this.camera);
+    this.districtManager = new DistrictManager(this.scene, this.camera);
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.pointerDownPos = new THREE.Vector2();
@@ -106,6 +106,14 @@ export class Engine {
     if (intersects.length > 0) {
       const hitObj = intersects.find(i => i.object.name !== 'GroundPlane');
       
+      // Ilce topuna tiklandiginda ucusa gec
+      if (hitObj && hitObj.object.userData?.isDistrict) {
+          const ud = hitObj.object.userData;
+          this.flyTo(ud.targetX, ud.targetZ, 2500);
+          return;
+      }
+
+      
       if (hitObj) {
         if (hitObj.object.name === 'TargetPin') return;
 
@@ -152,6 +160,41 @@ export class Engine {
 
   
   
+
+  
+  private flyTo(targetX: number, targetZ: number, targetY: number) {
+      const startX = this.controls.target.x;
+      const startZ = this.controls.target.z;
+      const startCamX = this.camera.position.x;
+      const startCamY = this.camera.position.y;
+      const startCamZ = this.camera.position.z;
+      
+      const endCamX = targetX;
+      const endCamZ = targetZ + 600; 
+      
+      let progress = 0;
+      const animateFly = () => {
+          progress += 0.025; // Ucus hizi
+          if (progress > 1) progress = 1;
+          
+          const ease = 1 - Math.pow(1 - progress, 3); // Yavaslayarak durma efekti
+          
+          this.controls.target.x = startX + (targetX - startX) * ease;
+          this.controls.target.z = startZ + (targetZ - startZ) * ease;
+          
+          this.camera.position.x = startCamX + (endCamX - startCamX) * ease;
+          this.camera.position.y = startCamY + (targetY - startCamY) * ease;
+          this.camera.position.z = startCamZ + (endCamZ - startCamZ) * ease;
+          
+          this.controls.update(); // Update cagrildigi an DistrictManager da tetiklenir!
+          
+          if (progress < 1) {
+              requestAnimationFrame(animateFly);
+          }
+      };
+      animateFly();
+  }
+
 
   public start() {
     const animate = () => {
