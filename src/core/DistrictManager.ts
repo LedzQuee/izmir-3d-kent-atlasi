@@ -1,13 +1,15 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import { convertGpsToVector } from '../utils/coordinates';
 
 export class DistrictManager {
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
-    private pointCache: { x: number, z: number, mesh: any, index?: number, visible: boolean, ilce: string }[] = [];
-    private lastChildrenCount = 0;
+    public districtGroup: THREE.Group;
+    private textureCache: Map<string, THREE.CanvasTexture> = new Map();
     
-    // Ucus merkezleri icin sabit koordinatlar
+    private isApiLoaded = false;
+    private apiDistrictCounts = new Map<string, number>();
+
     private districtsData = [
         { name: 'ALİAĞA', lat: 38.7994, lng: 26.9707 }, { name: 'BALÇOVA', lat: 38.3908, lng: 27.0461 },
         { name: 'BAYINDIR', lat: 38.2195, lng: 27.6467 }, { name: 'BAYRAKLI', lat: 38.4633, lng: 27.1691 },
@@ -29,8 +31,16 @@ export class DistrictManager {
     constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
         this.scene = scene;
         this.camera = camera;
+        this.districtGroup = new THREE.Group();
+        this.districtGroup.name = 'DistrictGroup';
+        this.scene.add(this.districtGroup);
+
         this.initSidebarUI();
         this.initializeApiData();
+    }
+
+    public update() {
+        // Yeni API mimarisi sayesinde her saniye ekrani tarayip kasmaya gerek kalmadi!
     }
 
     private initSidebarUI() {
@@ -49,14 +59,13 @@ export class DistrictManager {
         `;
 
         const title = document.createElement('div');
-        title.innerHTML = 'İlçe Analiz Raporu <br><span style="font-size:11px; color:#aaa; font-weight:normal;">Tüm Katmanlar</span>';
+        title.innerHTML = 'İlçe Analiz Raporu <br><span style="font-size:11px; color:#aaa; font-weight:normal;">%100 Kesin API Verileri</span>';
         title.style.cssText = 'font-weight: bold; color: #ff9900; margin-bottom: 15px; text-align: center; font-size: 14px; border-bottom: 1px solid #444; padding-bottom: 10px;';
         sidebar.appendChild(title);
 
         const listContainer = document.createElement('div');
         listContainer.id = 'district-list';
         listContainer.style.cssText = 'overflow-y: auto; flex: 1; padding-right: 5px;';
-        // Custom scrollbar
         listContainer.innerHTML = `<style>
             #district-list::-webkit-scrollbar { width: 6px; }
             #district-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
@@ -67,10 +76,6 @@ export class DistrictManager {
         sidebar.appendChild(listContainer);
         document.body.appendChild(sidebar);
     }
-
-    
-    private isApiLoaded = false;
-    private apiDistrictCounts = new Map<string, number>();
 
     public async initializeApiData() {
         if (this.isApiLoaded) return;
@@ -83,7 +88,6 @@ export class DistrictManager {
             'taksiduraklari', 'afetaciltoplanmaalani'
         ];
 
-        // Tum 30 ilceyi 0 ile baslat
         this.districtsData.forEach(d => this.apiDistrictCounts.set(d.name, 0));
 
         let completed = 0;
@@ -112,28 +116,51 @@ export class DistrictManager {
         });
     }
 
+    private getIlceFromRecord(rec: any): string {
+        if (!rec) return 'DİĞER';
+        let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi || rec.IlceId || rec.ilceid;
+        
+        if (!val && rec.ADI) {
+            const ad = String(rec.ADI).toLocaleUpperCase('tr-TR');
+            for (let d of this.districtsData) {
+                if (ad.includes(d.name)) return d.name;
+            }
+        }
+        
+        if (typeof val !== 'string') return 'DİĞER';
+        val = val.toLocaleUpperCase('tr-TR').trim();
+        
+        if (val.includes('KARŞI')) return 'KARŞIYAKA';
+        if (val.includes('KARABA')) return 'KARABAĞLAR';
+        if (val.includes('KEMALPA')) return 'KEMALPAŞA';
+        if (val.includes('GÜZELBA')) return 'GÜZELBAHÇE';
+        if (val.includes('BALÇOV')) return 'BALÇOVA';
+        if (val.includes('MENDER')) return 'MENDERES';
+        if (val.includes('SEFERİH')) return 'SEFERİHİSAR';
+        
+        return val;
+    }
+
     private buildBrownSpheres() {
         this.districtGroup.clear();
         
-        // Kahverengi Kure Materyali (Kullanicinin istedigi gibi)
         const geo = new THREE.SphereGeometry(180, 32, 32);
+        // İstenildiği gibi kesin Kahverengi tonlari
         const mat = new THREE.MeshStandardMaterial({ color: 0x8B4513, emissive: 0x3e1d04, roughness: 0.3, metalness: 0.4 });
 
         this.districtsData.forEach(d => {
             const count = this.apiDistrictCounts.get(d.name) || 0;
-            if (count === 0) return; // Veri yoksa cizme
+            if (count === 0) return;
             
             const [x, y, z] = convertGpsToVector(d.lat, d.lng);
             
             const targetData = { isDistrict: true, name: d.name, count: count, targetX: x, targetZ: z };
 
-            // Kureyi ekle
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, 100, z);
             mesh.userData = targetData;
             this.districtGroup.add(mesh);
 
-            // Uzerindeki Yazi
             const label = `${d.name} (${count})`;
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.getTextTexture(label) }));
             sprite.position.set(x, 380, z);
@@ -183,35 +210,36 @@ export class DistrictManager {
         
         const totalRow = document.createElement('div');
         totalRow.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 1px solid #555; text-align: center; color: #fff; font-size: 12px;';
-        totalRow.innerHTML = `Kesin API Toplamı: <b>${totalCount}</b>`;
+        totalRow.innerHTML = `API'den Çekilen Net Toplam: <b>${totalCount}</b>`;
         listContainer.appendChild(totalRow);
     }
 
-
-    private getIlceFromRecord(rec: any): string {
-        if (!rec) return 'DİĞER / BİLİNMEYEN';
-        let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi || rec.IlceId || rec.ilceid;
+    private getTextTexture(text: string) {
+        if (this.textureCache.has(text)) return this.textureCache.get(text)!;
         
-        if (!val && rec.ADI) {
-            const ad = String(rec.ADI).toLocaleUpperCase('tr-TR');
-            for (let d of this.districtsData) {
-                if (ad.includes(d.name)) return d.name;
-            }
-        }
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048; canvas.height = 512;
+        const ctx = canvas.getContext('2d')!;
         
-        if (typeof val !== 'string') return 'DİĞER / BİLİNMEYEN';
-        val = val.toLocaleUpperCase('tr-TR').trim();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 140px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         
-        if (val.includes('KARŞI')) return 'KARŞIYAKA';
-        if (val.includes('KARABA')) return 'KARABAĞLAR';
-        if (val.includes('KEMALPA')) return 'KEMALPAŞA';
-        if (val.includes('GÜZELBA')) return 'GÜZELBAHÇE';
-        if (val.includes('BALÇOV')) return 'BALÇOVA';
-        if (val.includes('MENDER')) return 'MENDERES';
-        if (val.includes('SEFERİH')) return 'SEFERİHİSAR';
+        ctx.shadowColor = 'rgba(0,0,0,1)';
+        ctx.shadowBlur = 25;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
         
-        return val;
-    }
-
+        ctx.fillText(text, 1024, 256);
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.anisotropy = 16;
+        tex.needsUpdate = true;
+        
+        this.textureCache.set(text, tex);
+        return tex;
     }
 }
