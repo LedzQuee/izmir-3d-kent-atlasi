@@ -68,66 +68,38 @@ export class DistrictManager {
 
 
     
-    private districtsData = [
-        { name: 'ALİAĞA', lat: 38.7994, lng: 26.9707, x: 0, z: 0 },
-        { name: 'BALÇOVA', lat: 38.3908, lng: 27.0461, x: 0, z: 0 },
-        { name: 'BAYINDIR', lat: 38.2195, lng: 27.6467, x: 0, z: 0 },
-        { name: 'BAYRAKLI', lat: 38.4633, lng: 27.1691, x: 0, z: 0 },
-        { name: 'BERGAMA', lat: 39.1215, lng: 27.1772, x: 0, z: 0 },
-        { name: 'BEYDAĞ', lat: 38.0872, lng: 28.2043, x: 0, z: 0 },
-        { name: 'BORNOVA', lat: 38.4716, lng: 27.2178, x: 0, z: 0 },
-        { name: 'BUCA', lat: 38.3842, lng: 27.1751, x: 0, z: 0 },
-        { name: 'ÇEŞME', lat: 38.3232, lng: 26.3065, x: 0, z: 0 },
-        { name: 'ÇİĞLİ', lat: 38.4907, lng: 27.0583, x: 0, z: 0 },
-        { name: 'DİKİLİ', lat: 39.0722, lng: 26.8893, x: 0, z: 0 },
-        { name: 'FOÇA', lat: 38.6675, lng: 26.7554, x: 0, z: 0 },
-        { name: 'GAZİEMİR', lat: 38.3242, lng: 27.1328, x: 0, z: 0 },
-        { name: 'GÜZELBAHÇE', lat: 38.3614, lng: 26.8837, x: 0, z: 0 },
-        { name: 'KARABAĞLAR', lat: 38.3752, lng: 27.1189, x: 0, z: 0 },
-        { name: 'KARABURUN', lat: 38.6366, lng: 26.5147, x: 0, z: 0 },
-        { name: 'KARŞIYAKA', lat: 38.4594, lng: 27.1147, x: 0, z: 0 },
-        { name: 'KEMALPAŞA', lat: 38.4278, lng: 27.4172, x: 0, z: 0 },
-        { name: 'KINIK', lat: 39.0880, lng: 27.3820, x: 0, z: 0 },
-        { name: 'KİRAZ', lat: 38.2307, lng: 28.2065, x: 0, z: 0 },
-        { name: 'KONAK', lat: 38.4190, lng: 27.1287, x: 0, z: 0 },
-        { name: 'MENDERES', lat: 38.2526, lng: 27.1352, x: 0, z: 0 },
-        { name: 'MENEMEN', lat: 38.6019, lng: 27.0694, x: 0, z: 0 },
-        { name: 'NARLIDERE', lat: 38.3892, lng: 26.9930, x: 0, z: 0 },
-        { name: 'ÖDEMİŞ', lat: 38.2294, lng: 27.9744, x: 0, z: 0 },
-        { name: 'SEFERİHİSAR', lat: 38.1973, lng: 26.8378, x: 0, z: 0 },
-        { name: 'SELÇUK', lat: 37.9490, lng: 27.3712, x: 0, z: 0 },
-        { name: 'TİRE', lat: 38.0898, lng: 27.7348, x: 0, z: 0 },
-        { name: 'TORBALI', lat: 38.1517, lng: 27.3601, x: 0, z: 0 },
-        { name: 'URLA', lat: 38.3232, lng: 26.7644, x: 0, z: 0 }
-    ];
-
-    private initializeDistrictCoords() {
-        if (this.districtsData[0].x !== 0) return;
-        this.districtsData.forEach(d => {
-            const [x, y, z] = convertGpsToVector(d.lat, d.lng);
-            d.x = x;
-            d.z = z;
-        });
-    }
-
-    private getNearestDistrict(px: number, pz: number): string {
-        this.initializeDistrictCoords();
-        let minDistance = Infinity;
-        let nearestName = 'İZMİR (GENEL)';
+    
+    private getIlceFromRecord(rec: any): string {
+        if (!rec) return 'İZMİR (GENEL)';
         
-        this.districtsData.forEach(d => {
-            const dist = Math.hypot(px - d.x, pz - d.z);
-            if (dist < minDistance) {
-                minDistance = dist;
-                nearestName = d.name;
+        let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi || rec.IlceId || rec.ilceid;
+        
+        // Eger ilce kutucugu bos birakildiysa ama isminde ilce geciyorsa (Yapay Zeka Kurtarmasi)
+        if (!val && rec.ADI) {
+            const ad = String(rec.ADI).toLocaleUpperCase('tr-TR');
+            const ilceler = ['ALİAĞA', 'BALÇOVA', 'BAYINDIR', 'BAYRAKLI', 'BERGAMA', 'BEYDAĞ', 'BORNOVA', 'BUCA', 'ÇEŞME', 'ÇİĞLİ', 'DİKİLİ', 'FOÇA', 'GAZİEMİR', 'GÜZELBAHÇE', 'KARABAĞLAR', 'KARABURUN', 'KARŞIYAKA', 'KEMALPAŞA', 'KINIK', 'KİRAZ', 'KONAK', 'MENDERES', 'MENEMEN', 'NARLIDERE', 'ÖDEMİŞ', 'SEFERİHİSAR', 'SELÇUK', 'TİRE', 'TORBALI', 'URLA'];
+            for(let i=0; i<ilceler.length; i++) {
+                if (ad.includes(ilceler[i])) return ilceler[i];
             }
-        });
+        }
         
-        return nearestName;
+        if (typeof val !== 'string') return 'İZMİR (GENEL)';
+        val = val.toLocaleUpperCase('tr-TR').trim();
+        
+        // Belediye verilerindeki kronik yazim hatalarini kesin olarak duzelt
+        if (val.includes('KARŞI')) return 'KARŞIYAKA';
+        if (val.includes('KARABA')) return 'KARABAĞLAR';
+        if (val.includes('KEMALPA')) return 'KEMALPAŞA';
+        if (val.includes('GÜZELBA')) return 'GÜZELBAHÇE';
+        if (val.includes('BALÇOV')) return 'BALÇOVA';
+        if (val.includes('MENDER')) return 'MENDERES';
+        if (val.includes('SEFERİH')) return 'SEFERİHİSAR';
+        
+        return val;
     }
-
 
     private extractPoints() {
+
         this.setAllOriginalsVisible(true); 
         this.pointCache = [];
         
@@ -137,7 +109,7 @@ export class DistrictManager {
             if (node.type === 'Mesh' && node.userData && (node.userData.layerName || node.userData.record)) {
                 const worldPos = new THREE.Vector3();
                 node.getWorldPosition(worldPos);
-                const ilce = this.getNearestDistrict(worldPos.x, worldPos.z);
+                const ilce = this.getIlceFromRecord(node.userData.record);
                 this.pointCache.push({ x: worldPos.x, z: worldPos.z, mesh: node, visible: true, ilce });
             } 
             else if (node.type === 'InstancedMesh' && node.userData && node.userData.records) {
@@ -150,7 +122,7 @@ export class DistrictManager {
                     pos.setFromMatrixPosition(mat);
                     // InstancedMesh'ler lokal matris tasir, onlari dunya matrisine cevirelim
                     pos.applyMatrix4(inst.matrixWorld); 
-                    const ilce = this.getNearestDistrict(pos.x, pos.z);
+                    const ilce = this.getIlceFromRecord(records ? records[i] : null);
                     this.pointCache.push({ x: pos.x, z: pos.z, mesh: inst, index: i, visible: true, ilce });
                 }
             } 
