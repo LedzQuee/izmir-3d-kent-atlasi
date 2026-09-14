@@ -9,6 +9,7 @@ export class DistrictManager {
     
     private pointCache: { x: number, z: number, mesh: any, index?: number, visible: boolean, ilce: string, layerName: string }[] = [];
     private lastChildrenCount = 0;
+    private pointsVisibleForLOD = true;
     private isZoomedOut = true;
     
     // Sag Cekmece Secimleri
@@ -70,18 +71,27 @@ export class DistrictManager {
             }
         });
 
+        
         if (currentNodes !== this.lastChildrenCount && currentNodes > 0) {
             this.extractPoints();
             this.recalculateCounts();
             this.lastChildrenCount = currentNodes;
-            this.setAllOriginalsVisible(true); // Yerdeki orijinal noktalar her zaman (filtreye gore) gorunur kalsin
         }
 
-        // --- EN IYI TAKTIK: MESAFEYE GORE YUMUSAK SAYDAMLASMA (SMOOTH FADE) ---
-        // Kamera etikete yaklastikca etiket yavasca saydamlasir ve kaybolur.
-        // Uzaklastikca yavasca geri gelir. 
-        
-        const FADE_START = 2200; // Bu mesafede saydamlasmaya baslar
+        // --- NOKTALARIN YUKSEKLIGE GORE GIZLENMESI ---
+        const altitude = this.camera.position.y;
+        const SHOW_POINTS_THRESHOLD = 1800; // Yere 1800 birimden fazla yaklasinca veriler belirir
+
+        const shouldShowPoints = altitude < SHOW_POINTS_THRESHOLD;
+        if (this.pointsVisibleForLOD !== shouldShowPoints) {
+            this.pointsVisibleForLOD = shouldShowPoints;
+            this.setAllOriginalsVisible(shouldShowPoints);
+        }
+
+        // --- ETIKETLERIN MESAFEYE GORE YUMUSAK SAYDAMLASMASI (SMOOTH FADE) ---
+        const FADE_START = 2200;
+        const FADE_END = 1200;
+ // Bu mesafede saydamlasmaya baslar
         const FADE_END = 1200;   // Bu mesafeden daha yakindaysa tamamen kaybolur
 
         this.districtGroup.children.forEach(child => {
@@ -182,7 +192,7 @@ export class DistrictManager {
 
         this.buildCorporateBadges(activeCounts);
         this.updateRightSidebarUI(activeCounts);
-        this.setAllOriginalsVisible(true);
+        this.setAllOriginalsVisible(this.pointsVisibleForLOD);
     }
 
 
