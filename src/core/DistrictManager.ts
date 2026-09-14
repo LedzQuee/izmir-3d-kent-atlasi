@@ -141,12 +141,30 @@ export class DistrictManager {
         return val;
     }
 
+    
     private buildBrownSpheres() {
         this.districtGroup.clear();
         
-        const geo = new THREE.SphereGeometry(180, 32, 32);
-        // İstenildiği gibi kesin Kahverengi tonlari
-        const mat = new THREE.MeshStandardMaterial({ color: 0x8B4513, emissive: 0x3e1d04, roughness: 0.3, metalness: 0.4 });
+        // Profesyonel Holografik Sutun Materyali (Dijital Ikiz Konsepti)
+        const mat = new THREE.MeshPhysicalMaterial({ 
+            color: 0x00f0ff,       // Neon Mavi/Cyan
+            emissive: 0x0044ff,    // Icten gelen parlama
+            emissiveIntensity: 0.8,
+            transparent: true,
+            opacity: 0.4,          // Arkasini gosterir
+            roughness: 0.1,
+            metalness: 0.1,
+            transmission: 0.5,     // Cam etkisi
+            side: THREE.DoubleSide
+        });
+
+        // Taban icin ince, parlayan radar halkasi materyali
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: 0x00f0ff,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
 
         this.districtsData.forEach(d => {
             const count = this.apiDistrictCounts.get(d.name) || 0;
@@ -156,19 +174,32 @@ export class DistrictManager {
             
             const targetData = { isDistrict: true, name: d.name, count: count, targetX: x, targetZ: z };
 
+            // 1. Veri Sutunu (Yukseklik = veri sayisi * carpan)
+            const height = Math.max(100, count * 2.5); // Minimum 100 birim yukseklik
+            const geo = new THREE.CylinderGeometry(60, 60, height, 32);
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, 100, z);
+            // Silindirin alt kismi tam yere (y=0) degmesi icin yuksekliginin yarisi kadar yariçapa kaldiriyoruz
+            mesh.position.set(x, height / 2, z);
             mesh.userData = targetData;
             this.districtGroup.add(mesh);
 
+            // 2. Yerdeki Radar Halkasi (Zemin Vurgusu)
+            const ringGeo = new THREE.RingGeometry(65, 80, 32);
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2; // Yere yatir
+            ring.position.set(x, 5, z); // Yerden cok az yukarida
+            this.districtGroup.add(ring);
+
+            // 3. Havada Asili Modern Etiket (Sutunun tam tepesinde)
             const label = `${d.name} (${count})`;
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.getTextTexture(label) }));
-            sprite.position.set(x, 380, z);
-            sprite.scale.set(2048, 512, 1);
+            sprite.position.set(x, height + 80, z); // Sutunun 80 birim uzerinde
+            sprite.scale.set(1600, 400, 1);
             sprite.userData = targetData;
             this.districtGroup.add(sprite);
         });
     }
+
 
     private updateSidebarUIFromApi() {
         const listContainer = document.getElementById('district-list');
@@ -214,24 +245,36 @@ export class DistrictManager {
         listContainer.appendChild(totalRow);
     }
 
+    
     private getTextTexture(text: string) {
         if (this.textureCache.has(text)) return this.textureCache.get(text)!;
         
         const canvas = document.createElement('canvas');
-        canvas.width = 2048; canvas.height = 512;
+        canvas.width = 1600; canvas.height = 400;
         const ctx = canvas.getContext('2d')!;
         
+        // Modern Kapsul (Pill) Arkaplani
+        ctx.fillStyle = 'rgba(0, 10, 20, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(100, 50, 1400, 300, 150); // Koseleri tam yuvarlak
+        ctx.fill();
+        
+        // Neon Cerceve
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.8)';
+        ctx.lineWidth = 15;
+        ctx.stroke();
+        
+        // Yazi Ayarlari
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 140px system-ui, sans-serif';
+        ctx.font = 'bold 120px "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        ctx.shadowColor = 'rgba(0,0,0,1)';
-        ctx.shadowBlur = 25;
-        ctx.shadowOffsetX = 5;
-        ctx.shadowOffsetY = 5;
+        // Yazi Parlamasi
+        ctx.shadowColor = 'rgba(0, 240, 255, 1)';
+        ctx.shadowBlur = 30;
         
-        ctx.fillText(text, 1024, 256);
+        ctx.fillText(text, 800, 210);
         
         const tex = new THREE.CanvasTexture(canvas);
         tex.minFilter = THREE.LinearFilter;
@@ -242,4 +285,5 @@ export class DistrictManager {
         this.textureCache.set(text, tex);
         return tex;
     }
+
 }
