@@ -148,6 +148,7 @@ export function createLegend(items: LegendItem[]) {
               busToolRow.style.background = 'rgba(0,0,0,0.5)';
               busToolRow.style.borderColor = '#555';
               busToolRow.innerHTML = 'Yakın Otobüs Durağı Bul (Kapalı)';
+              UIManager.showToast('Otobüs Modu Kapatıldı. Harita temizlendi.');
               window.dispatchEvent(new CustomEvent('clearBusStops'));
           }
       };

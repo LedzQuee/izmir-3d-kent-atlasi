@@ -1,11 +1,12 @@
 ﻿export class UIManager {
     static infoBox: HTMLDivElement;
     static loader: HTMLDivElement;
-    static activeToast: HTMLDivElement | null = null;
+    
+    // Singleton (Tekil) Bildirim Kutusu
+    static toastEl: HTMLDivElement;
     static toastTimeoutId: any = null;
 
     static init() {
-        // Tıklama Bilgi Kutusu (Modern Cam Efektli Tasarım)
         this.infoBox = document.createElement('div');
         this.infoBox.style.cssText = `
             position: absolute;
@@ -14,7 +15,7 @@
             border-radius: 8px;
             padding: 16px;
             color: #f8fafc;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             display: none;
             min-width: 220px;
             max-width: 320px;
@@ -26,7 +27,6 @@
         `;
         document.body.appendChild(this.infoBox);
         
-        // Yükleniyor Göstergesi (Modern Tasarım)
         this.loader = document.createElement('div');
         this.loader.style.cssText = `
             position: fixed;
@@ -48,23 +48,10 @@
         `;
         this.loader.innerHTML = 'Veriler Yükleniyor...';
         document.body.appendChild(this.loader);
-    }
 
-    static showLoading() { this.loader.style.display = 'block'; }
-    static hideLoading() { this.loader.style.display = 'none'; }
-
-    static showToast(msg: string, isError = false) {
-        if (this.activeToast) {
-            this.activeToast.remove();
-            if (this.toastTimeoutId) clearTimeout(this.toastTimeoutId);
-        }
-
-        const toast = document.createElement('div');
-        // Hata ise kirmizi vurgu, degilse mavi vurgu
-        const accentColor = isError ? '#ef4444' : '#3b82f6'; 
-        
-        // Asagidan suzulerek gelen modern Toast CSS'i
-        toast.style.cssText = `
+        // Sisteme baslarken tek bir toast kutusu olusturulup saklanir
+        this.toastEl = document.createElement('div');
+        this.toastEl.style.cssText = `
             position: fixed;
             bottom: 40px;
             left: 50%;
@@ -85,29 +72,35 @@
             text-align: center;
             pointer-events: none;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05);
-            border-bottom: 3px solid ${accentColor};
+            border-bottom: 3px solid transparent;
         `;
-        
-        // Icerigi bas (Emoji yok, saf kurumsal metin)
-        toast.innerHTML = msg;
-        
-        document.body.appendChild(toast);
-        
-        // Animasyonu tetiklemek icin reflow beklemesi
-        void toast.offsetWidth;
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateX(-50%) translateY(0)';
-        
-        this.activeToast = toast;
+        document.body.appendChild(this.toastEl);
+    }
 
+    static showLoading() { this.loader.style.display = 'block'; }
+    static hideLoading() { this.loader.style.display = 'none'; }
+
+    static showToast(msg: string, isError = false) {
+        // Yeni mesaj gelirse eski zamanlayiciyi aninda iptal et
+        if (this.toastTimeoutId) {
+            clearTimeout(this.toastTimeoutId);
+        }
+
+        // Renk ve Yaziyi aninda guncelle (DOm'da yeni obje uretmez!)
+        const accentColor = isError ? '#ef4444' : '#3b82f6'; 
+        this.toastEl.style.borderBottomColor = accentColor;
+        this.toastEl.innerHTML = msg;
+        
+        // Ekrana goster
+        void this.toastEl.offsetWidth;
+        this.toastEl.style.opacity = '1';
+        this.toastEl.style.transform = 'translateX(-50%) translateY(0)';
+
+        // 3 saniye sonra geri sakla
         this.toastTimeoutId = setTimeout(() => { 
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(-50%) translateY(20px)';
-            setTimeout(() => {
-                if (toast.parentNode) toast.remove();
-                if (this.activeToast === toast) this.activeToast = null;
-            }, 400); 
-        }, 3500);
+            this.toastEl.style.opacity = '0';
+            this.toastEl.style.transform = 'translateX(-50%) translateY(20px)';
+        }, 3000);
     }
 
     static showInfo(html: string, event: MouseEvent) {
