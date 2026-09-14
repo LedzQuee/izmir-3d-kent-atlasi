@@ -53,11 +53,12 @@ export class Engine {
     groundMesh.position.y = -10; 
     this.scene.add(groundMesh);
 
+    this.districtManager = new DistrictManager(this.scene, this.camera);
     window.addEventListener('resize', this.onWindowResize.bind(this));
-    this.controls.addEventListener('change', () => this.clusterManager.update());
+    this.controls.addEventListener('change', () => this.districtManager.update());
     setTimeout(() => this.districtManager.update(), 1500);
 
-    this.districtManager = new DistrictManager(this.scene, this.camera);
+    
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.pointerDownPos = new THREE.Vector2();
