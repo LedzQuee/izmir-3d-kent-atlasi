@@ -1,4 +1,5 @@
-
+﻿const fs = require('fs');
+const legendCode = `
 export function createLegend(items: { name: string, color: string, onToggle: (checked: boolean) => void }[]) {
     const existing = document.getElementById('legend-container');
     if (existing) existing.remove();
@@ -7,7 +8,7 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
     container.id = 'legend-container';
     
     // Baslangicta katlanmis, saydam ve zarif sol kenar tasarimi
-    container.style.cssText = `
+    container.style.cssText = \`
         position: fixed; left: 0; top: 10%;
         width: 50px; max-height: 80vh;
         background: rgba(20, 25, 30, 0.4); backdrop-filter: blur(8px);
@@ -17,30 +18,30 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
         z-index: 100; overflow: hidden; 
         transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         display: flex; flex-direction: column;
-    `;
+    \`;
 
     // Kapaliyken Gorunen Ikon (Katmanlar Ikonu)
     const iconDiv = document.createElement('div');
     iconDiv.innerHTML = ' ☰ '; 
-    iconDiv.style.cssText = `
+    iconDiv.style.cssText = \`
         min-width: 50px; height: 50px; display: flex;
         align-items: center; justify-content: center; font-size: 22px;
         cursor: pointer; opacity: 1; transition: 0.3s;
-    `;
+    \`;
     container.appendChild(iconDiv);
 
     // Icerik Konteyneri (Baslangicta saydam ve tiklanamaz)
     const content = document.createElement('div');
-    content.style.cssText = `
+    content.style.cssText = \`
         width: 280px; opacity: 0; transition: opacity 0.3s, transform 0.4s;
         padding: 0 20px 20px 20px; pointer-events: none; overflow-y: auto;
         transform: translateX(-20px); box-sizing: border-box;
-    `;
+    \`;
     
-    content.innerHTML += `<style>
+    content.innerHTML += \`<style>
         #legend-container div::-webkit-scrollbar { width: 5px; }
         #legend-container div::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 5px; }
-    </style>`;
+    </style>\`;
 
     const title = document.createElement('h3');
     title.textContent = 'Harita Katmanları';
@@ -65,7 +66,7 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
         };
 
         const colorBox = document.createElement('div');
-        colorBox.style.cssText = `width: 14px; height: 14px; background: ${item.color}; border-radius: 50%; margin-right: 10px; border: 1px solid rgba(255,255,255,0.5);`;
+        colorBox.style.cssText = \`width: 14px; height: 14px; background: \${item.color}; border-radius: 50%; margin-right: 10px; border: 1px solid rgba(255,255,255,0.5);\`;
 
         const span = document.createElement('span');
         span.textContent = item.name;
@@ -100,3 +101,5 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
         content.style.transform = 'translateX(-20px)';
     };
 }
+`;
+fs.writeFileSync('src/utils/legend.ts', legendCode);

@@ -179,10 +179,10 @@ export class DistrictManager {
         document.body.appendChild(toolbox);
     }
 
+    
     public update() {
         let currentNodes = 0;
         this.scene.traverse(node => {
-            // isDistrict olanlar rozetlerdir, onlari sayma
             if (node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.records || node.userData.record)) {
                 if (node.type === 'Mesh' || node.type === 'InstancedMesh') {
                     currentNodes++;
@@ -190,33 +190,25 @@ export class DistrictManager {
             }
         });
 
-        // Eger haritaya yeni bir katman (veri) eklendiyse taramayi yenile
         if (currentNodes !== this.lastChildrenCount && currentNodes > 0) {
             this.extractPoints();
             this.recalculateCounts();
             this.lastChildrenCount = currentNodes;
         }
 
-        // LOD (Yaklasma / Uzaklasma Gorunurluk Ayari)
-        const altitude = this.camera.position.y;
-        const ZOOM_THRESHOLD = 2800;
-
-        if (altitude > ZOOM_THRESHOLD) {
-            // Uzaktayiz -> Noktalari gizle, Rozetleri (Toplamlari) goster
-            if (!this.isZoomedOut) {
-                this.districtGroup.visible = true;
-                this.setAllOriginalsVisible(false);
-                this.isZoomedOut = true;
-            }
-        } else {
-            // Yakindayiz -> Rozetleri gizle, Noktalari goster (Sadece secili ilceler)
-            if (this.isZoomedOut) {
-                this.districtGroup.visible = false;
-                this.setAllOriginalsVisible(true);
-                this.isZoomedOut = false;
-            }
+        // Taktik: NO-CLIPPING (Her Zaman Gorunur, Dogal Ucus)
+        // Kullaniciyi rahatsiz eden "yaklasinca kaybolma/uzaklasinca geri gelme" mekanizmasini KALDIRDIK.
+        // Yerdeki veriler HER ZAMAN gorunur. (Filtrelenmemisse)
+        // Ilce etiketleri HER ZAMAN gorunur.
+        // Etiketler havada durdugu icin, yaklastikca zaten dogal olarak tepede kalip kameranin altinda gecer, boylece gorusu kapatmaz.
+        
+        if (this.isZoomedOut) {
+            this.isZoomedOut = false;
+            this.districtGroup.visible = true;
+            this.setAllOriginalsVisible(true);
         }
     }
+
 
     private getIlceFromRecord(rec: any): string {
         if (!rec) return 'DİĞER';
@@ -316,7 +308,7 @@ export class DistrictManager {
             });
 
             const sprite = new THREE.Sprite(spriteMat);
-            sprite.position.set(x, 150, z); // Havada hafif suzulur
+            sprite.position.set(x, 400, z); // Gokyuzunde asili durur (Yerden yuksekte) // Havada hafif suzulur
             sprite.scale.set(1500, 320, 1);
             sprite.userData = targetData;
             
