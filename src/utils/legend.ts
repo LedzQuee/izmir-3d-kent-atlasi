@@ -1,5 +1,5 @@
 
-export function createLegend(items: { name: string, color: string, onToggle: (checked: boolean) => void }[]) {
+export function createLegend(items: { label: string, color: string, onToggle: (checked: boolean) => void }[]) {
   // Eger eski kutucuklu id'ler kaldiysa onlari sil
   const existing1 = document.getElementById('map-legend');
   const existing2 = document.getElementById('legend-container');
@@ -89,7 +89,7 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
     dot.style.cssText = `width: 14px; height: 14px; border-radius: 50%; background-color: ${item.color}; box-shadow: 0 0 8px ${item.color}; transition: transform 0.2s; transform: scale(1);`;
 
     const label = document.createElement('span');
-    label.textContent = item.name;
+    label.textContent = (item.label || 'İsimsiz Katman');
 
     row.onclick = () => {
       state.visible = !state.visible;

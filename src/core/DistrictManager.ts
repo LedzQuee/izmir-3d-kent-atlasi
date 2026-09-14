@@ -297,7 +297,7 @@ export class DistrictManager {
 
         // Kapaliyken Gorunen Ikon (Istatistik/Siralama)
         const iconDiv = document.createElement('div');
-        iconDiv.innerHTML = ' 📊 '; 
+        iconDiv.innerHTML = ' ≡ '; 
         iconDiv.style.cssText = `
             position: absolute; right: 0; top: 0;
             width: 50px; height: 50px; display: flex;
