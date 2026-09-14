@@ -1,5 +1,4 @@
 ﻿import * as THREE from 'three';
-import { convertGpsToVector } from '../utils/coordinates';
 
 export class DistrictManager {
     private scene: THREE.Scene;
@@ -18,28 +17,26 @@ export class DistrictManager {
         this.scene.add(this.districtGroup);
     }
 
-    
-    
-    
-    
     public update() {
         let currentNodes = 0;
         let layerStats: Record<string, number> = {};
         
         this.scene.traverse(node => {
-            if (node.userData && (node.userData.layerName || node.userData.records)) {
+            // Sadece gecerli veri tasiyan Mesh/InstancedMesh katmanlarini say (isDistrict haric)
+            if (node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.records || node.userData.record)) {
                 if (node.type === 'Mesh' || node.type === 'InstancedMesh') {
                     currentNodes++;
-                    const layerName = node.userData.layerName || 'Bilinmeyen Katman';
+                    const layerName = node.userData.layerName || 'Bilinmeyen';
                     layerStats[layerName] = (layerStats[layerName] || 0) + (node.type === 'InstancedMesh' ? (node as any).count : 1);
                 }
             }
         });
 
         let rebuildNeeded = false;
+        // Eger sahneye yeni bir katman eklendiyse (Taksiler, Plajlar asenkron geldiyse)
         if (currentNodes !== this.lastChildrenCount && currentNodes > 0) {
             console.log("--- YENI VERI BULUNDU, SISTEM ZORLA GUNCELLENIYOR ---");
-            console.log("Bulunan Katmanlar:", layerStats);
+            console.log("Bulunan Katmanlar (Guncel Durum):", layerStats);
             this.extractPoints();
             this.buildDistricts();
             this.lastChildrenCount = currentNodes;
@@ -66,15 +63,12 @@ export class DistrictManager {
         }
     }
 
-
-    
-    
     private getIlceFromRecord(rec: any): string {
         if (!rec) return 'İZMİR (GENEL)';
         
         let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi || rec.IlceId || rec.ilceid;
         
-        // Eger ilce kutucugu bos birakildiysa ama isminde ilce geciyorsa (Yapay Zeka Kurtarmasi)
+        // Eger ilce kutucugu bos birakildiysa ama isminde ilce geciyorsa (Kurtarma)
         if (!val && rec.ADI) {
             const ad = String(rec.ADI).toLocaleUpperCase('tr-TR');
             const ilceler = ['ALİAĞA', 'BALÇOVA', 'BAYINDIR', 'BAYRAKLI', 'BERGAMA', 'BEYDAĞ', 'BORNOVA', 'BUCA', 'ÇEŞME', 'ÇİĞLİ', 'DİKİLİ', 'FOÇA', 'GAZİEMİR', 'GÜZELBAHÇE', 'KARABAĞLAR', 'KARABURUN', 'KARŞIYAKA', 'KEMALPAŞA', 'KINIK', 'KİRAZ', 'KONAK', 'MENDERES', 'MENEMEN', 'NARLIDERE', 'ÖDEMİŞ', 'SEFERİHİSAR', 'SELÇUK', 'TİRE', 'TORBALI', 'URLA'];
@@ -86,7 +80,7 @@ export class DistrictManager {
         if (typeof val !== 'string') return 'İZMİR (GENEL)';
         val = val.toLocaleUpperCase('tr-TR').trim();
         
-        // Belediye verilerindeki kronik yazim hatalarini kesin olarak duzelt
+        // Belediye kronik yazim hatalari
         if (val.includes('KARŞI')) return 'KARŞIYAKA';
         if (val.includes('KARABA')) return 'KARABAĞLAR';
         if (val.includes('KEMALPA')) return 'KEMALPAŞA';
@@ -99,20 +93,20 @@ export class DistrictManager {
     }
 
     private extractPoints() {
-
         this.setAllOriginalsVisible(true); 
         this.pointCache = [];
         
         const processNode = (node: THREE.Object3D) => {
             if (node.name === 'GroundPlane' || node.type === 'GridHelper' || node.name === 'TargetPin' || node.name === 'DistrictGroup' || node.name === 'ClusterGroup') return;
 
-            if (node.type === 'Mesh' && node.userData && (node.userData.layerName || node.userData.record)) {
+            // Mesh ve gercek katman kontrolu (Sekil ne olursa olsun)
+            if (node.type === 'Mesh' && node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.record)) {
                 const worldPos = new THREE.Vector3();
                 node.getWorldPosition(worldPos);
                 const ilce = this.getIlceFromRecord(node.userData.record);
                 this.pointCache.push({ x: worldPos.x, z: worldPos.z, mesh: node, visible: true, ilce });
             } 
-            else if (node.type === 'InstancedMesh' && node.userData && node.userData.records) {
+            else if (node.type === 'InstancedMesh' && node.userData && !node.userData.isDistrict && node.userData.records) {
                 const inst = node as THREE.InstancedMesh;
                 const records = inst.userData.records;
                 const mat = new THREE.Matrix4();
@@ -120,7 +114,6 @@ export class DistrictManager {
                 for(let i=0; i<inst.count; i++) {
                     inst.getMatrixAt(i, mat);
                     pos.setFromMatrixPosition(mat);
-                    // InstancedMesh'ler lokal matris tasir, onlari dunya matrisine cevirelim
                     pos.applyMatrix4(inst.matrixWorld); 
                     const ilce = this.getIlceFromRecord(records ? records[i] : null);
                     this.pointCache.push({ x: pos.x, z: pos.z, mesh: inst, index: i, visible: true, ilce });
@@ -131,7 +124,6 @@ export class DistrictManager {
             }
         };
 
-        // Bu islemden once tum matrislerin guncel oldugundan emin olalim
         this.scene.updateMatrixWorld(true);
         this.scene.children.forEach(child => processNode(child));
     }
@@ -145,8 +137,6 @@ export class DistrictManager {
             districts.get(p.ilce)!.push(p);
         });
 
-        // Ilce Kuresi Materyali
-        
         console.log("----- ILCE DAGILIM RAPORU -----");
         console.log("Toplam Taranan Gecerli Nokta: " + this.pointCache.length);
         let total = 0;
@@ -154,6 +144,7 @@ export class DistrictManager {
             console.log(name + ": " + points.length + " kayit");
             total += points.length;
         });
+        console.log("Beklenen Toplam: " + total);
         console.log("-------------------------------");
 
         const geo = new THREE.SphereGeometry(180, 32, 32);
@@ -180,9 +171,9 @@ export class DistrictManager {
 
             const label = `${name} (${points.length})`;
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.getTextTexture(label) }));
-            sprite.position.set(ax, 380, az); // Kurenin biraz uzerinde duser
-            sprite.scale.set(1500, 375, 1);
-            sprite.userData = targetData; // Yaziya tiklanirsa da ucus baslar
+            sprite.position.set(ax, 380, az);
+            sprite.scale.set(2048, 512, 1);
+            sprite.userData = targetData; 
             this.districtGroup.add(sprite);
         });
     }
@@ -221,22 +212,27 @@ export class DistrictManager {
         if (this.textureCache.has(text)) return this.textureCache.get(text)!;
         
         const canvas = document.createElement('canvas');
-        canvas.width = 1024; canvas.height = 256;
+        canvas.width = 2048; canvas.height = 512;
         const ctx = canvas.getContext('2d')!;
         
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 85px system-ui, sans-serif';
+        ctx.font = 'bold 140px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        ctx.shadowColor = 'rgba(0,0,0,0.9)';
-        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(0,0,0,1)';
+        ctx.shadowBlur = 25;
         ctx.shadowOffsetX = 5;
         ctx.shadowOffsetY = 5;
         
-        ctx.fillText(text, 512, 128);
+        ctx.fillText(text, 1024, 256);
         
         const tex = new THREE.CanvasTexture(canvas);
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.anisotropy = 16;
+        tex.needsUpdate = true;
+        
         this.textureCache.set(text, tex);
         return tex;
     }
