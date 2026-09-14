@@ -56,7 +56,7 @@ export class Engine {
     this.districtManager = new DistrictManager(this.scene, this.camera);
     window.addEventListener('resize', this.onWindowResize.bind(this));
     this.controls.addEventListener('change', () => this.districtManager.update());
-    setTimeout(() => this.districtManager.update(), 1500);
+    setInterval(() => this.districtManager.update(), 1000);
 
     
     this.raycaster = new THREE.Raycaster();

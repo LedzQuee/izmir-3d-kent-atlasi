@@ -20,22 +20,51 @@ export class DistrictManager {
 
     
     
+    
     public update() {
-        let rebuildNeeded = false;
         let currentNodes = 0;
+        let layerStats: Record<string, number> = {};
+        
         this.scene.traverse(node => {
-            // Sadece bizim katmanlarimizdan gelen gecerli meshleri say (District topu ve sprite haric)
             if (node.userData && (node.userData.layerName || node.userData.records)) {
-                if (node.type === 'Mesh' || node.type === 'InstancedMesh') currentNodes++;
+                if (node.type === 'Mesh' || node.type === 'InstancedMesh') {
+                    currentNodes++;
+                    const layerName = node.userData.layerName || 'Bilinmeyen Katman';
+                    layerStats[layerName] = (layerStats[layerName] || 0) + (node.type === 'InstancedMesh' ? (node as any).count : 1);
+                }
             }
         });
 
+        // Her defasinda eksik var mi diye kontrol edip zorla yenile (Agresif entegrasyon)
         if (currentNodes !== this.lastChildrenCount && currentNodes > 0) {
+            console.log("--- YENI VERI BULUNDU, SISTEM ZORLA GUNCELLENIYOR ---");
+            console.log("Bulunan Katmanlar:", layerStats);
+            
             this.extractPoints();
             this.buildDistricts();
             this.lastChildrenCount = currentNodes;
-            rebuildNeeded = true;
         }
+
+        if (this.pointCache.length === 0) return;
+
+        const alt = this.camera.position.y;
+        const threshold = 3500; 
+        
+        if (alt < threshold) {
+            if (this.isZoomedOut) {
+                this.setAllOriginalsVisible(true);
+                this.districtGroup.visible = false;
+                this.isZoomedOut = false;
+            }
+        } else {
+            if (!this.isZoomedOut) {
+                this.setAllOriginalsVisible(false);
+                this.districtGroup.visible = true;
+                this.isZoomedOut = true;
+            }
+        }
+    }
+
 
         if (this.pointCache.length === 0) return;
 
