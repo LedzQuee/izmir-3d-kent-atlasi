@@ -17,28 +17,43 @@ export class DistrictManager {
         this.scene.add(this.districtGroup);
     }
 
+    
     public update() {
-        if (this.scene.children.length !== this.lastChildrenCount) {
+        let rebuildNeeded = false;
+        
+        // Scene icindeki aktif mesh sayisini derinlemesine say (Sadece child degil)
+        let currentNodes = 0;
+        this.scene.traverse(node => {
+            if (node.type === 'Mesh' || node.type === 'InstancedMesh') currentNodes++;
+        });
+
+        if (currentNodes !== this.lastChildrenCount) {
             this.extractPoints();
             this.buildDistricts();
-            this.lastChildrenCount = this.scene.children.length;
+            this.lastChildrenCount = currentNodes;
+            rebuildNeeded = true;
         }
 
         if (this.pointCache.length === 0) return;
 
         const alt = this.camera.position.y;
-        const threshold = 3500; // Bu yuksekligin altina inince ilceler dagilir
+        const threshold = 3500; 
         
-        if (alt < threshold && this.isZoomedOut) {
-            this.setAllOriginalsVisible(true);
-            this.districtGroup.visible = false;
-            this.isZoomedOut = false;
-        } else if (alt >= threshold && !this.isZoomedOut) {
-            this.setAllOriginalsVisible(false);
-            this.districtGroup.visible = true;
-            this.isZoomedOut = true;
+        if (alt < threshold) {
+            if (this.isZoomedOut || rebuildNeeded) {
+                this.setAllOriginalsVisible(true);
+                this.districtGroup.visible = false;
+                this.isZoomedOut = false;
+            }
+        } else {
+            if (!this.isZoomedOut || rebuildNeeded) {
+                this.setAllOriginalsVisible(false);
+                this.districtGroup.visible = true;
+                this.isZoomedOut = true;
+            }
         }
     }
+
 
     private getIlce(rec: any): string {
         if (!rec) return 'İZMİR (GENEL)';
@@ -47,36 +62,37 @@ export class DistrictManager {
         return val.toLocaleUpperCase('tr-TR').trim();
     }
 
+    
     private extractPoints() {
         this.setAllOriginalsVisible(true); 
         this.pointCache = [];
         
-        this.scene.children.forEach(child => {
-            if (child.name === 'GroundPlane' || child.type === 'GridHelper' || child.name === 'TargetPin' || child.name === 'DistrictGroup' || child.name === 'ClusterGroup') return;
+        const processNode = (node: THREE.Object3D) => {
+            if (node.name === 'GroundPlane' || node.type === 'GridHelper' || node.name === 'TargetPin' || node.name === 'DistrictGroup' || node.name === 'ClusterGroup') return;
 
-            if (child.type === 'Mesh' && (child as any).geometry?.type === 'SphereGeometry') {
-                const ilce = this.getIlce(child.userData?.record);
-                this.pointCache.push({ x: child.position.x, z: child.position.z, mesh: child, visible: true, ilce });
-            } else if (child.type === 'InstancedMesh') {
-                const inst = child as THREE.InstancedMesh;
+            if (node.type === 'Mesh' && (node as any).geometry?.type === 'SphereGeometry') {
+                const ilce = this.getIlce(node.userData?.record);
+                this.pointCache.push({ x: node.position.x, z: node.position.z, mesh: node, visible: true, ilce });
+            } 
+            else if (node.type === 'InstancedMesh') {
+                const inst = node as THREE.InstancedMesh;
                 const records = inst.userData?.records;
                 const mat = new THREE.Matrix4();
                 const pos = new THREE.Vector3();
+                // InstancedMesh icindeki GERCEK gecerli veri sayisi (count) kadar don
                 for(let i=0; i<inst.count; i++) {
                     inst.getMatrixAt(i, mat);
                     pos.setFromMatrixPosition(mat);
                     const ilce = this.getIlce(records ? records[i] : null);
                     this.pointCache.push({ x: pos.x, z: pos.z, mesh: inst, index: i, visible: true, ilce });
                 }
-            } else if (child.type === 'Group') {
-                child.children.forEach(sub => {
-                     if (sub.name !== 'TargetPin' && sub.type === 'Mesh' && (sub as any).geometry?.type === 'SphereGeometry') {
-                          const ilce = this.getIlce(sub.userData?.record);
-                          this.pointCache.push({ x: sub.position.x, z: sub.position.z, mesh: sub, visible: true, ilce });
-                     }
-                });
+            } 
+            else if (node.type === 'Group' || node.type === 'Scene') {
+                node.children.forEach(child => processNode(child));
             }
-        });
+        };
+
+        this.scene.children.forEach(child => processNode(child));
     }
 
     private buildDistricts() {
