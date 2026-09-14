@@ -63,6 +63,24 @@ export class DistrictManager {
     }
 
 
+    
+    private setAllOriginalsVisible(visible: boolean) {
+        // Tum sahneyi tarayip Mesh ve InstancedMesh nesnelerini (ilce etiketleri haric) gizle veya goster
+        this.scene.traverse(node => {
+            if (node.name === 'GroundPlane' || node.type === 'GridHelper' || node.name === 'TargetPin' || node.name === 'DistrictGroup' || node.name === 'ClusterGroup') return;
+
+            if (node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.records || node.userData.record)) {
+                if (node.type === 'Mesh') {
+                    node.visible = visible;
+                } else if (node.type === 'InstancedMesh') {
+                    // InstancedMesh'lerin kendisini gorunur/gorunmez yapmak en performanslisidir
+                    node.visible = visible;
+                }
+            }
+        });
+    }
+
+
     private initSidebarUI() {
         const existing = document.getElementById('district-sidebar');
         if (existing) existing.remove();
