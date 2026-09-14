@@ -1,8 +1,6 @@
 ﻿export class UIManager {
     static infoBox: HTMLDivElement;
     static loader: HTMLDivElement;
-    
-    // Singleton (Tekil) Bildirim Kutusu
     static toastEl: HTMLDivElement;
     static toastTimeoutId: any = null;
 
@@ -49,13 +47,12 @@
         this.loader.innerHTML = 'Veriler Yükleniyor...';
         document.body.appendChild(this.loader);
 
-        // Sisteme baslarken tek bir toast kutusu olusturulup saklanir
         this.toastEl = document.createElement('div');
         this.toastEl.style.cssText = `
             position: fixed;
-            bottom: 40px;
+            top: 30px; /* Bildirim yukariya tasindi */
             left: 50%;
-            transform: translateX(-50%) translateY(20px);
+            transform: translateX(-50%) translateY(-20px); /* Yukaridan asagi inme efekti icin */
             background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -81,25 +78,21 @@
     static hideLoading() { this.loader.style.display = 'none'; }
 
     static showToast(msg: string, isError = false) {
-        // Yeni mesaj gelirse eski zamanlayiciyi aninda iptal et
         if (this.toastTimeoutId) {
             clearTimeout(this.toastTimeoutId);
         }
 
-        // Renk ve Yaziyi aninda guncelle (DOm'da yeni obje uretmez!)
         const accentColor = isError ? '#ef4444' : '#3b82f6'; 
         this.toastEl.style.borderBottomColor = accentColor;
         this.toastEl.innerHTML = msg;
         
-        // Ekrana goster
         void this.toastEl.offsetWidth;
         this.toastEl.style.opacity = '1';
         this.toastEl.style.transform = 'translateX(-50%) translateY(0)';
 
-        // 3 saniye sonra geri sakla
         this.toastTimeoutId = setTimeout(() => { 
             this.toastEl.style.opacity = '0';
-            this.toastEl.style.transform = 'translateX(-50%) translateY(20px)';
+            this.toastEl.style.transform = 'translateX(-50%) translateY(-20px)';
         }, 3000);
     }
 
