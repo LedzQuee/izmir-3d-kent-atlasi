@@ -1,6 +1,6 @@
 ﻿import * as THREE from 'three';
 import { MapControls } from 'three/examples/jsm/controls/MapControls';
-import { fetchNearestStops } from '../layers/OtobusDuraklariLayer';
+import { fetchNearestStops, clearNearestStops } from '../layers/OtobusDuraklariLayer';
 import { UIManager } from '../ui/UIManager';
 
 export class Engine {
@@ -56,6 +56,7 @@ export class Engine {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.pointerDownPos = new THREE.Vector2();
+    window.addEventListener('clearBusStops', () => clearNearestStops(this.scene));
 
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown.bind(this));
     this.renderer.domElement.addEventListener('pointerup', this.onPointerUp.bind(this));
@@ -129,7 +130,7 @@ export class Engine {
         }
       } else {
         const groundHit = intersects.find(i => i.object.name === 'GroundPlane');
-        if (groundHit) {
+        if (groundHit && UIManager.busStopMode) {
           fetchNearestStops(this.scene, groundHit.point.x, groundHit.point.z);
         }
       }

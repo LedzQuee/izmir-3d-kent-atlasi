@@ -75,3 +75,11 @@ export async function fetchNearestStops(scene: THREE.Scene, hitX: number, hitZ: 
     console.error(error);
   }
 }
+
+export function clearNearestStops(scene: THREE.Scene) {
+  if (currentBusStopsGroup) {
+    disposeGroup(currentBusStopsGroup);
+    scene.remove(currentBusStopsGroup);
+    currentBusStopsGroup = null;
+  }
+}
