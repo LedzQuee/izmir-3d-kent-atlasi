@@ -1,4 +1,5 @@
-
+﻿const fs = require('fs');
+const originalLegend = `
 export function createLegend(items: { name: string, color: string, onToggle: (checked: boolean) => void }[]) {
     const existing = document.getElementById('legend-container');
     if (existing) existing.remove();
@@ -7,13 +8,13 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
     container.id = 'legend-container';
     
     // Ilk baştaki KATI, SABIT ve NET OKUNUR tasarim
-    container.style.cssText = `
+    container.style.cssText = \`
         position: absolute; left: 20px; top: 20px;
         background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255,255,255,0.2);
         border-radius: 8px; padding: 15px; width: 250px;
         color: white; font-family: sans-serif; z-index: 100;
         backdrop-filter: blur(4px); box-sizing: border-box;
-    `;
+    \`;
 
     const title = document.createElement('h3');
     title.textContent = 'Harita Katmanları';
@@ -35,7 +36,7 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
         };
 
         const colorBox = document.createElement('div');
-        colorBox.style.cssText = `width: 14px; height: 14px; background: ${item.color}; border-radius: 3px; margin-right: 8px;`;
+        colorBox.style.cssText = \`width: 14px; height: 14px; background: \${item.color}; border-radius: 3px; margin-right: 8px;\`;
 
         const span = document.createElement('span');
         span.textContent = item.name;
@@ -49,3 +50,5 @@ export function createLegend(items: { name: string, color: string, onToggle: (ch
 
     document.body.appendChild(container);
 }
+`;
+fs.writeFileSync('src/utils/legend.ts', originalLegend);

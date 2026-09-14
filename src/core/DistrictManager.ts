@@ -12,8 +12,8 @@ export class DistrictManager {
     private isZoomedOut = true;
     
     // Sag Cekmece Secimleri
-    private selectedDistricts: Set<string> = new Set();
-    private allDistrictsSelected = true;
+    
+    
 
     private districtsData = [
         { name: 'ALİAĞA', lat: 38.7994, lng: 26.9707 }, { name: 'BALÇOVA', lat: 38.3908, lng: 27.0461 },
@@ -40,7 +40,7 @@ export class DistrictManager {
         this.districtGroup.name = 'DistrictGroup';
         this.scene.add(this.districtGroup);
 
-        this.initRightToolboxUI();
+        this.initRightHoverSidebar();
         
         // Sol menuden katman acilip kapanirsa aninda sayilari guncelle
         window.addEventListener('layerToggled', () => {
@@ -60,127 +60,6 @@ export class DistrictManager {
         if (sidebar) sidebar.remove();
     }
 
-    private initRightToolboxUI() {
-        const existing = document.getElementById('district-right-toolbox');
-        if (existing) existing.remove();
-
-        const toolbox = document.createElement('div');
-        toolbox.id = 'district-right-toolbox';
-        toolbox.style.cssText = `
-            position: fixed; right: 0; top: 0; height: 100vh; width: 25vw; min-width: 300px;
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
-            box-shadow: -5px 0 20px rgba(0,0,0,0.1); transform: translateX(100%);
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 999;
-            display: flex; flex-direction: column; font-family: sans-serif;
-        `;
-
-        // Ac/Kapa Oku (Arrow Tab)
-        const arrowTab = document.createElement('div');
-        arrowTab.style.cssText = `
-            position: absolute; left: -40px; top: 50%; transform: translateY(-50%);
-            width: 40px; height: 80px; background: rgba(255,255,255,0.95);
-            border-radius: 10px 0 0 10px; box-shadow: -5px 0 10px rgba(0,0,0,0.1);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 24px; color: #555;
-        `;
-        arrowTab.innerHTML = '◀';
-        
-        let isOpen = false;
-        arrowTab.onclick = () => {
-            isOpen = !isOpen;
-            toolbox.style.transform = isOpen ? 'translateX(0)' : 'translateX(100%)';
-            arrowTab.innerHTML = isOpen ? '▶' : '◀';
-        };
-        toolbox.appendChild(arrowTab);
-
-        // Icerik Konteyneri
-        const content = document.createElement('div');
-        content.style.cssText = 'padding: 20px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box;';
-
-        const title = document.createElement('h2');
-        title.textContent = 'İlçe Filtreleme';
-        title.style.cssText = 'margin: 0 0 15px 0; color: #333; font-size: 18px; border-bottom: 2px solid #ff9900; padding-bottom: 10px;';
-        content.appendChild(title);
-
-        const searchInput = document.createElement('input');
-        searchInput.type = 'text';
-        searchInput.placeholder = 'İlçe Ara...';
-        searchInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; font-size: 15px; outline: none;';
-        content.appendChild(searchInput);
-
-        const selectAllBtn = document.createElement('button');
-        selectAllBtn.textContent = 'Tümünü Seç / Temizle';
-        selectAllBtn.style.cssText = 'width: 100%; padding: 10px; margin-bottom: 15px; background: #eee; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: #555; transition: 0.2s;';
-        selectAllBtn.onmouseover = () => selectAllBtn.style.background = '#ddd';
-        selectAllBtn.onmouseout = () => selectAllBtn.style.background = '#eee';
-        selectAllBtn.onclick = () => {
-            this.allDistrictsSelected = !this.allDistrictsSelected;
-            if (this.allDistrictsSelected) {
-                this.districtsData.forEach(d => this.selectedDistricts.add(d.name));
-            } else {
-                this.selectedDistricts.clear();
-            }
-            renderCheckboxes(searchInput.value);
-            this.recalculateCounts();
-        };
-        content.appendChild(selectAllBtn);
-
-        const list = document.createElement('div');
-        list.style.cssText = 'flex: 1; overflow-y: auto; padding-right: 10px;';
-        list.innerHTML = `<style>
-            #district-right-toolbox div::-webkit-scrollbar { width: 6px; }
-            #district-right-toolbox div::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        </style>`;
-        
-        // Baslangicta hepsini secili yap
-        this.districtsData.forEach(d => this.selectedDistricts.add(d.name));
-
-        const renderCheckboxes = (filter: string) => {
-            Array.from(list.children).forEach(c => { if(c.tagName !== 'STYLE') c.remove(); });
-            
-            this.districtsData.forEach(d => {
-                if (d.name.toLowerCase().includes(filter.toLowerCase('tr-TR'))) {
-                    const row = document.createElement('label');
-                    row.style.cssText = 'display: flex; align-items: center; padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: 0.2s;';
-                    row.onmouseover = () => row.style.background = '#fafafa';
-                    row.onmouseout = () => row.style.background = 'transparent';
-
-                    const cb = document.createElement('input');
-                    cb.type = 'checkbox';
-                    cb.checked = this.selectedDistricts.has(d.name);
-                    cb.style.cssText = 'margin-right: 10px; transform: scale(1.2); cursor: pointer;';
-                    
-                    cb.onchange = (e) => {
-                        if ((e.target as HTMLInputElement).checked) {
-                            this.selectedDistricts.add(d.name);
-                        } else {
-                            this.selectedDistricts.delete(d.name);
-                        }
-                        this.allDistrictsSelected = this.selectedDistricts.size === this.districtsData.length;
-                        this.recalculateCounts();
-                    };
-
-                    const text = document.createElement('span');
-                    text.textContent = d.name;
-                    text.style.cssText = 'font-size: 15px; color: #444;';
-
-                    row.appendChild(cb);
-                    row.appendChild(text);
-                    list.appendChild(row);
-                }
-            });
-        };
-
-        renderCheckboxes('');
-        searchInput.oninput = (e) => renderCheckboxes((e.target as HTMLInputElement).value);
-
-        content.appendChild(list);
-        toolbox.appendChild(content);
-        document.body.appendChild(toolbox);
-    }
-
-    
-    
     public update() {
         let currentNodes = 0;
         this.scene.traverse(node => {
@@ -292,23 +171,20 @@ export class DistrictManager {
         this.scene.children.forEach(child => processNode(child));
     }
 
+    
     private recalculateCounts() {
         this.extractPoints();
 
         const activeCounts = new Map<string, number>();
         this.pointCache.forEach(p => {
-            // Eger sag menude bu ilce secili degilse, sayma
-            if (this.selectedDistricts.size > 0 && !this.selectedDistricts.has(p.ilce)) return;
             activeCounts.set(p.ilce, (activeCounts.get(p.ilce) || 0) + 1);
         });
 
         this.buildCorporateBadges(activeCounts);
-        
-        // Eger yakindaysak ve filtre degistiyse, noktalari da gizle/goster
-        if (!this.isZoomedOut) {
-            this.setAllOriginalsVisible(true);
-        }
+        this.updateRightSidebarUI(activeCounts);
+        this.setAllOriginalsVisible(true);
     }
+
 
     private buildCorporateBadges(counts: Map<string, number>) {
         this.districtGroup.clear();
@@ -337,18 +213,13 @@ export class DistrictManager {
         });
     }
 
+    
     private setPointVisible(p: any, visible: boolean) {
-        // Sag menude (Toolbox) filtre kapatildiysa, noktayi her turlu gizle
-        let finalVisible = visible;
-        if (visible && this.selectedDistricts.size > 0 && !this.selectedDistricts.has(p.ilce)) {
-            finalVisible = false;
-        }
-
-        if (p.visible === finalVisible) return;
-        p.visible = finalVisible;
+        if (p.visible === visible) return;
+        p.visible = visible;
         
         if (p.index === undefined) {
-            p.mesh.visible = finalVisible;
+            p.mesh.visible = visible;
         } else {
             const inst = p.mesh as THREE.InstancedMesh;
             const mat = new THREE.Matrix4();
@@ -358,12 +229,13 @@ export class DistrictManager {
             
             const dummy = new THREE.Object3D();
             dummy.position.copy(pos);
-            dummy.scale.setScalar(finalVisible ? 1 : 0); 
+            dummy.scale.setScalar(visible ? 1 : 0); 
             dummy.updateMatrix();
             inst.setMatrixAt(p.index, dummy.matrix);
             inst.instanceMatrix.needsUpdate = true;
         }
     }
+
 
     private setAllOriginalsVisible(visible: boolean) {
         this.pointCache.forEach(p => this.setPointVisible(p, visible));
@@ -404,4 +276,108 @@ export class DistrictManager {
         this.textureCache.set(text, tex);
         return tex;
     }
+
+    private initRightHoverSidebar() {
+        const existing = document.getElementById('district-right-sidebar');
+        if (existing) existing.remove();
+
+        const container = document.createElement('div');
+        container.id = 'district-right-sidebar';
+        container.style.cssText = `
+            position: fixed; right: 0; top: 15%;
+            width: 50px; max-height: 80vh; height: 600px;
+            background: rgba(20, 25, 30, 0.4); backdrop-filter: blur(8px);
+            border-radius: 15px 0 0 15px; border: 1px solid rgba(255,255,255,0.1);
+            border-right: none; box-shadow: -5px 5px 20px rgba(0,0,0,0.3);
+            color: white; font-family: "Segoe UI", Roboto, sans-serif;
+            z-index: 100; overflow: hidden; 
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; flex-direction: column;
+        `;
+
+        // Kapaliyken Gorunen Ikon (Istatistik/Siralama)
+        const iconDiv = document.createElement('div');
+        iconDiv.innerHTML = ' 📊 '; 
+        iconDiv.style.cssText = `
+            position: absolute; right: 0; top: 0;
+            width: 50px; height: 50px; display: flex;
+            align-items: center; justify-content: center; font-size: 22px;
+            cursor: pointer; opacity: 1; transition: 0.3s;
+        `;
+        container.appendChild(iconDiv);
+
+        const content = document.createElement('div');
+        content.id = 'district-list-content';
+        content.style.cssText = `
+            width: 280px; opacity: 0; transition: opacity 0.3s, transform 0.4s;
+            padding: 20px; pointer-events: none; overflow-y: auto; height: 100%;
+            transform: translateX(20px); box-sizing: border-box; display: flex; flex-direction: column;
+        `;
+        
+        content.innerHTML = `<style>
+            #district-list-content::-webkit-scrollbar { width: 5px; }
+            #district-list-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 5px; }
+        </style>
+        <h3 style="margin: 0 0 15px 0; color: #ff9900; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">İlçe Veri Sıralaması</h3>
+        <div id="district-rows" style="flex: 1; overflow-y: auto; padding-right: 5px;"></div>
+        `;
+
+        container.appendChild(content);
+        document.body.appendChild(container);
+
+        // Hover (Uzerine Gelme) Animasyonlari
+        container.onmouseenter = () => {
+            container.style.width = '280px';
+            container.style.background = 'rgba(20, 25, 30, 0.85)';
+            iconDiv.style.opacity = '0';
+            content.style.opacity = '1';
+            content.style.pointerEvents = 'auto';
+            content.style.transform = 'translateX(0)';
+        };
+        
+        container.onmouseleave = () => {
+            container.style.width = '50px';
+            container.style.background = 'rgba(20, 25, 30, 0.4)';
+            iconDiv.style.opacity = '1';
+            content.style.opacity = '0';
+            content.style.pointerEvents = 'none';
+            content.style.transform = 'translateX(20px)';
+        };
+    }
+
+    private updateRightSidebarUI(counts: Map<string, number>) {
+        const rowsContainer = document.getElementById('district-rows');
+        if (!rowsContainer) return;
+        
+        rowsContainer.innerHTML = '';
+        const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+        
+        sorted.forEach(([name, count]) => {
+            if (count === 0) return;
+            const row = document.createElement('div');
+            row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; transition: 0.2s; border: 1px solid transparent;`;
+            row.onmouseover = () => { row.style.background = 'rgba(255, 153, 0, 0.2)'; row.style.borderColor = 'rgba(255,153,0,0.5)'; };
+            row.onmouseout = () => { row.style.background = 'rgba(255,255,255,0.05)'; row.style.borderColor = 'transparent'; };
+            row.onclick = () => {
+                const target = this.districtsData.find(d => d.name === name);
+                if (target) {
+                    const [x, y, z] = convertGpsToVector(target.lat, target.lng);
+                    window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { x, z } }));
+                }
+            };
+
+            const nameEl = document.createElement('span');
+            nameEl.textContent = name;
+            nameEl.style.cssText = 'font-size: 13px; font-weight: bold; color: #ddd;';
+
+            const countEl = document.createElement('span');
+            countEl.textContent = count.toString();
+            countEl.style.cssText = 'background: #ff9900; color: #000; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 900;';
+
+            row.appendChild(nameEl);
+            row.appendChild(countEl);
+            rowsContainer.appendChild(row);
+        });
+    }
+
 }
