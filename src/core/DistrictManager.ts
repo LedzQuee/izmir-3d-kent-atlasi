@@ -148,6 +148,7 @@ export class DistrictManager {
     }
 
     
+    
     private extractPoints() {
         this.setAllOriginalsVisible(true); 
         this.pointCache = [];
@@ -155,11 +156,11 @@ export class DistrictManager {
         const processNode = (node: THREE.Object3D) => {
             if (node.name === 'GroundPlane' || node.type === 'GridHelper' || node.name === 'TargetPin' || node.name === 'DistrictGroup' || node.name === 'ClusterGroup') return;
 
-            // Sarti tamamen genislettik: Mesh veya icinde record tasiyan herhangi bir sey
             if (node.type === 'Mesh' && node.userData && (node.userData.layerName || node.userData.record)) {
-                // Konum hesabi icin merkeze (position) bak
-                const ilce = this.getNearestDistrict(node.position.x, node.position.z);
-                this.pointCache.push({ x: node.position.x, z: node.position.z, mesh: node, visible: true, ilce });
+                const worldPos = new THREE.Vector3();
+                node.getWorldPosition(worldPos);
+                const ilce = this.getNearestDistrict(worldPos.x, worldPos.z);
+                this.pointCache.push({ x: worldPos.x, z: worldPos.z, mesh: node, visible: true, ilce });
             } 
             else if (node.type === 'InstancedMesh' && node.userData && node.userData.records) {
                 const inst = node as THREE.InstancedMesh;
@@ -169,6 +170,8 @@ export class DistrictManager {
                 for(let i=0; i<inst.count; i++) {
                     inst.getMatrixAt(i, mat);
                     pos.setFromMatrixPosition(mat);
+                    // InstancedMesh'ler lokal matris tasir, onlari dunya matrisine cevirelim
+                    pos.applyMatrix4(inst.matrixWorld); 
                     const ilce = this.getNearestDistrict(pos.x, pos.z);
                     this.pointCache.push({ x: pos.x, z: pos.z, mesh: inst, index: i, visible: true, ilce });
                 }
@@ -178,6 +181,8 @@ export class DistrictManager {
             }
         };
 
+        // Bu islemden once tum matrislerin guncel oldugundan emin olalim
+        this.scene.updateMatrixWorld(true);
         this.scene.children.forEach(child => processNode(child));
     }
 
