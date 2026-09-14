@@ -7,8 +7,13 @@ export class DistrictManager {
     public districtGroup: THREE.Group;
     private textureCache: Map<string, THREE.CanvasTexture> = new Map();
     
-    private isApiLoaded = false;
-    private apiDistrictCounts = new Map<string, number>();
+    private pointCache: { x: number, z: number, mesh: any, index?: number, visible: boolean, ilce: string, layerName: string }[] = [];
+    private lastChildrenCount = 0;
+    private isZoomedOut = true;
+    
+    // Sag Cekmece Secimleri
+    private selectedDistricts: Set<string> = new Set();
+    private allDistrictsSelected = true;
 
     private districtsData = [
         { name: 'ALİAĞA', lat: 38.7994, lng: 26.9707 }, { name: 'BALÇOVA', lat: 38.3908, lng: 27.0461 },
@@ -35,26 +40,176 @@ export class DistrictManager {
         this.districtGroup.name = 'DistrictGroup';
         this.scene.add(this.districtGroup);
 
-        this.initSidebarUI();
-        this.initSearchUI();
-        this.initializeApiData();
+        this.initRightToolboxUI();
+        
+        // Sol menuden katman acilip kapanirsa aninda sayilari guncelle
+        window.addEventListener('layerToggled', () => {
+            this.recalculateCounts();
+        });
+        
+        // Eski bozuk legend eger gizliyse gosterelim (Cunku kullanici sol menuyu kullanmak istiyor)
+        const oldLegend = document.getElementById('legend-container');
+        if (oldLegend) oldLegend.style.display = 'block';
+        
+        // Benim az once ekledigim sol arama cubugunu silelim
+        const searchTab = document.getElementById('district-search-tab');
+        if (searchTab) searchTab.remove();
+        
+        // Eski sol menudeki sidebar-ui (sol alt liste) varsa silelim
+        const sidebar = document.getElementById('district-sidebar');
+        if (sidebar) sidebar.remove();
     }
 
-    
+    private initRightToolboxUI() {
+        const existing = document.getElementById('district-right-toolbox');
+        if (existing) existing.remove();
+
+        const toolbox = document.createElement('div');
+        toolbox.id = 'district-right-toolbox';
+        toolbox.style.cssText = `
+            position: fixed; right: 0; top: 0; height: 100vh; width: 25vw; min-width: 300px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            box-shadow: -5px 0 20px rgba(0,0,0,0.1); transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 999;
+            display: flex; flex-direction: column; font-family: sans-serif;
+        `;
+
+        // Ac/Kapa Oku (Arrow Tab)
+        const arrowTab = document.createElement('div');
+        arrowTab.style.cssText = `
+            position: absolute; left: -40px; top: 50%; transform: translateY(-50%);
+            width: 40px; height: 80px; background: rgba(255,255,255,0.95);
+            border-radius: 10px 0 0 10px; box-shadow: -5px 0 10px rgba(0,0,0,0.1);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 24px; color: #555;
+        `;
+        arrowTab.innerHTML = '◀';
+        
+        let isOpen = false;
+        arrowTab.onclick = () => {
+            isOpen = !isOpen;
+            toolbox.style.transform = isOpen ? 'translateX(0)' : 'translateX(100%)';
+            arrowTab.innerHTML = isOpen ? '▶' : '◀';
+        };
+        toolbox.appendChild(arrowTab);
+
+        // Icerik Konteyneri
+        const content = document.createElement('div');
+        content.style.cssText = 'padding: 20px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box;';
+
+        const title = document.createElement('h2');
+        title.textContent = 'İlçe Filtreleme';
+        title.style.cssText = 'margin: 0 0 15px 0; color: #333; font-size: 18px; border-bottom: 2px solid #ff9900; padding-bottom: 10px;';
+        content.appendChild(title);
+
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'İlçe Ara...';
+        searchInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; font-size: 15px; outline: none;';
+        content.appendChild(searchInput);
+
+        const selectAllBtn = document.createElement('button');
+        selectAllBtn.textContent = 'Tümünü Seç / Temizle';
+        selectAllBtn.style.cssText = 'width: 100%; padding: 10px; margin-bottom: 15px; background: #eee; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: #555; transition: 0.2s;';
+        selectAllBtn.onmouseover = () => selectAllBtn.style.background = '#ddd';
+        selectAllBtn.onmouseout = () => selectAllBtn.style.background = '#eee';
+        selectAllBtn.onclick = () => {
+            this.allDistrictsSelected = !this.allDistrictsSelected;
+            if (this.allDistrictsSelected) {
+                this.districtsData.forEach(d => this.selectedDistricts.add(d.name));
+            } else {
+                this.selectedDistricts.clear();
+            }
+            renderCheckboxes(searchInput.value);
+            this.recalculateCounts();
+        };
+        content.appendChild(selectAllBtn);
+
+        const list = document.createElement('div');
+        list.style.cssText = 'flex: 1; overflow-y: auto; padding-right: 10px;';
+        list.innerHTML = `<style>
+            #district-right-toolbox div::-webkit-scrollbar { width: 6px; }
+            #district-right-toolbox div::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        </style>`;
+        
+        // Baslangicta hepsini secili yap
+        this.districtsData.forEach(d => this.selectedDistricts.add(d.name));
+
+        const renderCheckboxes = (filter: string) => {
+            Array.from(list.children).forEach(c => { if(c.tagName !== 'STYLE') c.remove(); });
+            
+            this.districtsData.forEach(d => {
+                if (d.name.toLowerCase().includes(filter.toLowerCase('tr-TR'))) {
+                    const row = document.createElement('label');
+                    row.style.cssText = 'display: flex; align-items: center; padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: 0.2s;';
+                    row.onmouseover = () => row.style.background = '#fafafa';
+                    row.onmouseout = () => row.style.background = 'transparent';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = this.selectedDistricts.has(d.name);
+                    cb.style.cssText = 'margin-right: 10px; transform: scale(1.2); cursor: pointer;';
+                    
+                    cb.onchange = (e) => {
+                        if ((e.target as HTMLInputElement).checked) {
+                            this.selectedDistricts.add(d.name);
+                        } else {
+                            this.selectedDistricts.delete(d.name);
+                        }
+                        this.allDistrictsSelected = this.selectedDistricts.size === this.districtsData.length;
+                        this.recalculateCounts();
+                    };
+
+                    const text = document.createElement('span');
+                    text.textContent = d.name;
+                    text.style.cssText = 'font-size: 15px; color: #444;';
+
+                    row.appendChild(cb);
+                    row.appendChild(text);
+                    list.appendChild(row);
+                }
+            });
+        };
+
+        renderCheckboxes('');
+        searchInput.oninput = (e) => renderCheckboxes((e.target as HTMLInputElement).value);
+
+        content.appendChild(list);
+        toolbox.appendChild(content);
+        document.body.appendChild(toolbox);
+    }
+
     public update() {
-        // Harita kameralarinda y ekseni (irtifa) uzakligi belirler
+        let currentNodes = 0;
+        this.scene.traverse(node => {
+            // isDistrict olanlar rozetlerdir, onlari sayma
+            if (node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.records || node.userData.record)) {
+                if (node.type === 'Mesh' || node.type === 'InstancedMesh') {
+                    currentNodes++;
+                }
+            }
+        });
+
+        // Eger haritaya yeni bir katman (veri) eklendiyse taramayi yenile
+        if (currentNodes !== this.lastChildrenCount && currentNodes > 0) {
+            this.extractPoints();
+            this.recalculateCounts();
+            this.lastChildrenCount = currentNodes;
+        }
+
+        // LOD (Yaklasma / Uzaklasma Gorunurluk Ayari)
         const altitude = this.camera.position.y;
-        const ZOOM_THRESHOLD = 2800; // Etiketlerin kaybolup, verilerin belirecegi sinir
+        const ZOOM_THRESHOLD = 2800;
 
         if (altitude > ZOOM_THRESHOLD) {
-            // Kus bakisi (Uzakta) -> Sadece Ilce Rozetlerini Goster
+            // Uzaktayiz -> Noktalari gizle, Rozetleri (Toplamlari) goster
             if (!this.isZoomedOut) {
                 this.districtGroup.visible = true;
                 this.setAllOriginalsVisible(false);
                 this.isZoomedOut = true;
             }
         } else {
-            // Yakinlasma (Zoom In) -> Rozetleri Gizle, Altindaki Verileri Erisime Ac
+            // Yakindayiz -> Rozetleri gizle, Noktalari goster (Sadece secili ilceler)
             if (this.isZoomedOut) {
                 this.districtGroup.visible = false;
                 this.setAllOriginalsVisible(true);
@@ -63,109 +218,15 @@ export class DistrictManager {
         }
     }
 
-
-    
-    private setAllOriginalsVisible(visible: boolean) {
-        // Tum sahneyi tarayip Mesh ve InstancedMesh nesnelerini (ilce etiketleri haric) gizle veya goster
-        this.scene.traverse(node => {
-            if (node.name === 'GroundPlane' || node.type === 'GridHelper' || node.name === 'TargetPin' || node.name === 'DistrictGroup' || node.name === 'ClusterGroup') return;
-
-            if (node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.records || node.userData.record)) {
-                if (node.type === 'Mesh') {
-                    node.visible = visible;
-                } else if (node.type === 'InstancedMesh') {
-                    // InstancedMesh'lerin kendisini gorunur/gorunmez yapmak en performanslisidir
-                    node.visible = visible;
-                }
-            }
-        });
-    }
-
-
-    private initSidebarUI() {
-        const existing = document.getElementById('district-sidebar');
-        if (existing) existing.remove();
-
-        const sidebar = document.createElement('div');
-        sidebar.id = 'district-sidebar';
-        sidebar.style.cssText = `
-            position: fixed; top: 20px; right: 20px;
-            background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px; padding: 15px; width: 260px;
-            color: white; font-family: sans-serif; z-index: 100;
-            backdrop-filter: blur(8px); display: flex; flex-direction: column;
-            max-height: calc(100vh - 40px);
-        `;
-
-        const title = document.createElement('div');
-        title.innerHTML = 'İlçe Analiz Raporu <br><span style="font-size:11px; color:#aaa; font-weight:normal;">%100 Kesin API Verileri</span>';
-        title.style.cssText = 'font-weight: bold; color: #ff9900; margin-bottom: 15px; text-align: center; font-size: 14px; border-bottom: 1px solid #444; padding-bottom: 10px;';
-        sidebar.appendChild(title);
-
-        const listContainer = document.createElement('div');
-        listContainer.id = 'district-list';
-        listContainer.style.cssText = 'overflow-y: auto; flex: 1; padding-right: 5px;';
-        listContainer.innerHTML = `<style>
-            #district-list::-webkit-scrollbar { width: 6px; }
-            #district-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
-            #district-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-            #district-list::-webkit-scrollbar-thumb:hover { background: rgba(255,153,0,0.8); }
-        </style>`;
-        
-        sidebar.appendChild(listContainer);
-        document.body.appendChild(sidebar);
-    }
-
-    public async initializeApiData() {
-        if (this.isApiLoaded) return;
-        this.isApiLoaded = true;
-
-        const endpoints = [
-            'havaalanlari', 'kaplicalar', 'yetistirmeyurtlari', 'terminaller',
-            'cocukgenclikmerkezleri', 'ailedayanismamerkezleri', 'meydanlar',
-            'plajlar', 'huzurevleri', 'toplummerkezleri', 'izbbhizmetnoktalari',
-            'taksiduraklari', 'afetaciltoplanmaalani'
-        ];
-
-        this.districtsData.forEach(d => this.apiDistrictCounts.set(d.name, 0));
-
-        let completed = 0;
-        endpoints.forEach(ep => {
-            fetch("https://openapi.izmir.bel.tr/api/ibb/cbs/" + ep)
-                .then(res => res.json())
-                .then(data => {
-                    const records = data.onemliyer || data;
-                    if(Array.isArray(records)) {
-                        records.forEach(r => {
-                            const ilce = this.getIlceFromRecord(r);
-                            if (this.apiDistrictCounts.has(ilce)) {
-                                this.apiDistrictCounts.set(ilce, this.apiDistrictCounts.get(ilce)! + 1);
-                            }
-                        });
-                    }
-                })
-                .catch(() => {})
-                .finally(() => {
-                    completed++;
-                    if (completed === endpoints.length) {
-                        this.buildBrownSpheres();
-                        this.updateSidebarUIFromApi();
-                    }
-                });
-        });
-    }
-
     private getIlceFromRecord(rec: any): string {
         if (!rec) return 'DİĞER';
         let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi || rec.IlceId || rec.ilceid;
-        
         if (!val && rec.ADI) {
             const ad = String(rec.ADI).toLocaleUpperCase('tr-TR');
             for (let d of this.districtsData) {
                 if (ad.includes(d.name)) return d.name;
             }
         }
-        
         if (typeof val !== 'string') return 'DİĞER';
         val = val.toLocaleUpperCase('tr-TR').trim();
         
@@ -176,120 +237,150 @@ export class DistrictManager {
         if (val.includes('BALÇOV')) return 'BALÇOVA';
         if (val.includes('MENDER')) return 'MENDERES';
         if (val.includes('SEFERİH')) return 'SEFERİHİSAR';
-        
         return val;
     }
 
-    
-    
-    private isZoomedOut = true;
+    private extractPoints() {
+        this.pointCache = [];
+        
+        const processNode = (node: THREE.Object3D) => {
+            if (node.name === 'GroundPlane' || node.type === 'GridHelper' || node.name === 'TargetPin' || node.name === 'DistrictGroup' || node.name === 'ClusterGroup') return;
 
-    private buildBrownSpheres() {
+            // Eger parent (Grup) gizliyse, noktalari sayma (Sol Menude kapatilmistir)
+            if (node.parent && node.parent.type === 'Group' && node.parent.visible === false) return;
+            if (node.visible === false && node.type === 'Group') return;
+
+            if (node.type === 'Mesh' && node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.record)) {
+                // Sadece kendisi de aciksa (Sol menuden kapatilmamissa) dahil et
+                if (node.visible === false && this.isZoomedOut === false) return; 
+                
+                const ilce = this.getIlceFromRecord(node.userData.record);
+                this.pointCache.push({ x: node.position.x, z: node.position.z, mesh: node, visible: true, ilce, layerName: node.userData.layerName || 'Bilinmeyen' });
+            } 
+            else if (node.type === 'InstancedMesh' && node.userData && !node.userData.isDistrict && node.userData.records) {
+                const inst = node as THREE.InstancedMesh;
+                const records = inst.userData.records;
+                const mat = new THREE.Matrix4();
+                const pos = new THREE.Vector3();
+                for(let i=0; i<inst.count; i++) {
+                    inst.getMatrixAt(i, mat);
+                    pos.setFromMatrixPosition(mat);
+                    pos.applyMatrix4(inst.matrixWorld); 
+                    const ilce = this.getIlceFromRecord(records ? records[i] : null);
+                    this.pointCache.push({ x: pos.x, z: pos.z, mesh: inst, index: i, visible: true, ilce, layerName: node.userData.layerName || 'Bilinmeyen' });
+                }
+            } 
+            else if (node.type === 'Group' || node.type === 'Scene') {
+                node.children.forEach(child => processNode(child));
+            }
+        };
+
+        this.scene.updateMatrixWorld(true);
+        this.scene.children.forEach(child => processNode(child));
+    }
+
+    private recalculateCounts() {
+        this.extractPoints();
+
+        const activeCounts = new Map<string, number>();
+        this.pointCache.forEach(p => {
+            // Eger sag menude bu ilce secili degilse, sayma
+            if (this.selectedDistricts.size > 0 && !this.selectedDistricts.has(p.ilce)) return;
+            activeCounts.set(p.ilce, (activeCounts.get(p.ilce) || 0) + 1);
+        });
+
+        this.buildCorporateBadges(activeCounts);
+        
+        // Eger yakindaysak ve filtre degistiyse, noktalari da gizle/goster
+        if (!this.isZoomedOut) {
+            this.setAllOriginalsVisible(true);
+        }
+    }
+
+    private buildCorporateBadges(counts: Map<string, number>) {
         this.districtGroup.clear();
-
+        
         this.districtsData.forEach(d => {
-            const count = this.apiDistrictCounts.get(d.name) || 0;
-            if (count === 0) return;
+            const count = counts.get(d.name) || 0;
+            if (count === 0) return; // Sifirsa rozet cizme
             
             const [x, y, z] = convertGpsToVector(d.lat, d.lng);
             const targetData = { isDistrict: true, name: d.name, count: count, targetX: x, targetZ: z };
 
-            // Sade, derinlik testinden muaf (her zaman ustte gorunen) kurumsal etiket
+            // TERTEMİZ, GÖLGESİZ, KURUMSAL BEYAZ KAPSÜL (Sıfır Neon)
             const label = `${d.name}  ${count}`;
             const spriteMat = new THREE.SpriteMaterial({ 
                 map: this.getTextTexture(label),
-                depthTest: false, // Binalarin veya yerin icine girmesini engeller, hep ustte kalir
+                depthTest: false,
                 transparent: true
             });
 
             const sprite = new THREE.Sprite(spriteMat);
-            sprite.position.set(x, 150, z); 
-            sprite.scale.set(1600, 350, 1);
+            sprite.position.set(x, 150, z); // Havada hafif suzulur
+            sprite.scale.set(1500, 320, 1);
             sprite.userData = targetData;
             
-            // Etiketler districtGroup icinde toplanir, zoom yapilinca hepsi gizlenir
             this.districtGroup.add(sprite);
         });
-        
-        // Ilk acilista harita uzakta oldugu icin verileri (orijinal noktalari) gizleyelim
-        this.setAllOriginalsVisible(false);
     }
 
+    private setPointVisible(p: any, visible: boolean) {
+        // Sag menude (Toolbox) filtre kapatildiysa, noktayi her turlu gizle
+        let finalVisible = visible;
+        if (visible && this.selectedDistricts.size > 0 && !this.selectedDistricts.has(p.ilce)) {
+            finalVisible = false;
+        }
 
-    private updateSidebarUIFromApi() {
-        const listContainer = document.getElementById('district-list');
-        if (!listContainer) return;
-
-        const styleHtml = listContainer.querySelector('style')?.outerHTML || '';
-        listContainer.innerHTML = styleHtml;
-
-        const sorted = Array.from(this.apiDistrictCounts.entries()).sort((a, b) => b[1] - a[1]);
-        let totalCount = 0;
-
-        sorted.forEach(([name, count]) => {
-            if (count === 0) return;
-            totalCount += count;
-            const row = document.createElement('div');
-            row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; transition: 0.2s; border: 1px solid transparent;`;
-            row.onmouseover = () => { row.style.background = 'rgba(255, 153, 0, 0.2)'; row.style.borderColor = 'rgba(255,153,0,0.5)'; };
-            row.onmouseout = () => { row.style.background = 'rgba(255,255,255,0.05)'; row.style.borderColor = 'transparent'; };
-            row.onclick = () => {
-                const target = this.districtsData.find(d => d.name === name);
-                if (target) {
-                    const [x, y, z] = convertGpsToVector(target.lat, target.lng);
-                    window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { x, z } }));
-                }
-            };
-
-            const nameEl = document.createElement('span');
-            nameEl.textContent = name;
-            nameEl.style.cssText = 'font-size: 13px; font-weight: bold; color: #ddd;';
-
-            const countEl = document.createElement('span');
-            countEl.textContent = count.toString();
-            countEl.style.cssText = 'background: #ff9900; color: #000; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 900;';
-
-            row.appendChild(nameEl);
-            row.appendChild(countEl);
-            listContainer.appendChild(row);
-        });
+        if (p.visible === finalVisible) return;
+        p.visible = finalVisible;
         
-        const totalRow = document.createElement('div');
-        totalRow.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 1px solid #555; text-align: center; color: #fff; font-size: 12px;';
-        totalRow.innerHTML = `API'den Çekilen Net Toplam: <b>${totalCount}</b>`;
-        listContainer.appendChild(totalRow);
+        if (p.index === undefined) {
+            p.mesh.visible = finalVisible;
+        } else {
+            const inst = p.mesh as THREE.InstancedMesh;
+            const mat = new THREE.Matrix4();
+            inst.getMatrixAt(p.index, mat);
+            const pos = new THREE.Vector3();
+            pos.setFromMatrixPosition(mat);
+            
+            const dummy = new THREE.Object3D();
+            dummy.position.copy(pos);
+            dummy.scale.setScalar(finalVisible ? 1 : 0); 
+            dummy.updateMatrix();
+            inst.setMatrixAt(p.index, dummy.matrix);
+            inst.instanceMatrix.needsUpdate = true;
+        }
     }
 
-    
+    private setAllOriginalsVisible(visible: boolean) {
+        this.pointCache.forEach(p => this.setPointVisible(p, visible));
+    }
+
     private getTextTexture(text: string) {
         if (this.textureCache.has(text)) return this.textureCache.get(text)!;
         
         const canvas = document.createElement('canvas');
-        canvas.width = 1600; canvas.height = 400;
+        canvas.width = 1500; canvas.height = 320;
         const ctx = canvas.getContext('2d')!;
         
-        // Modern Kapsul (Pill) Arkaplani
-        ctx.fillStyle = 'rgba(0, 10, 20, 0.85)';
+        // KURUMSAL BEYAZ ZEMİN (NEON YOK)
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.roundRect(100, 50, 1400, 300, 150); // Koseleri tam yuvarlak
+        ctx.roundRect(10, 10, 1480, 300, 150); 
         ctx.fill();
         
-        // Neon Cerceve
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.8)';
-        ctx.lineWidth = 15;
+        // ZARİF İNCE GRİ ÇERÇEVE
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 4;
         ctx.stroke();
         
-        // Yazi Ayarlari
-        ctx.fillStyle = '#ffffff';
+        // SİYAH MAT METİN
+        ctx.fillStyle = '#222222';
         ctx.font = 'bold 120px "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Yazi Parlamasi
-        ctx.shadowColor = 'rgba(0, 240, 255, 1)';
-        ctx.shadowBlur = 30;
-        
-        ctx.fillText(text, 800, 210);
+        ctx.fillText(text, 750, 175);
         
         const tex = new THREE.CanvasTexture(canvas);
         tex.minFilter = THREE.LinearFilter;
@@ -300,119 +391,4 @@ export class DistrictManager {
         this.textureCache.set(text, tex);
         return tex;
     }
-
-
-    private initSearchUI() {
-        // Eski efsane (sol menuyu) gizleyelim
-        const oldLegend = document.getElementById('legend-container');
-        if (oldLegend) oldLegend.style.display = 'none';
-        
-        // Eger varsa oncekini temizle
-        const existing = document.getElementById('district-search-tab');
-        if (existing) existing.remove();
-
-        // Sol kenara yapisik, gizli sekme
-        const searchTab = document.createElement('div');
-        searchTab.id = 'district-search-tab';
-        searchTab.style.cssText = `
-            position: fixed; left: 0; top: 50%; transform: translateY(-50%);
-            width: 45px; height: 120px; background: rgba(255,255,255,0.95);
-            border-radius: 0 15px 15px 0; box-shadow: 5px 0 15px rgba(0,0,0,0.15);
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 200; overflow: hidden;
-            backdrop-filter: blur(10px);
-        `;
-        
-        // Büyüteç ikonu
-        const icon = document.createElement('div');
-        icon.innerHTML = '🔍';
-        icon.style.cssText = 'font-size: 22px; transition: 0.3s; position: absolute; left: 12px;';
-        searchTab.appendChild(icon);
-
-        // İçe katlanmis arama paneli
-        const searchPanel = document.createElement('div');
-        searchPanel.style.cssText = `
-            position: absolute; left: 45px; top: 0; width: 260px; height: 100%;
-            padding: 15px; display: flex; flex-direction: column;
-            opacity: 0; pointer-events: none; transition: 0.4s; transform: translateX(-20px);
-            box-sizing: border-box;
-        `;
-
-        // Arama Kutusu
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = 'İlçe Ara...';
-        input.style.cssText = `
-            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;
-            font-size: 15px; outline: none; margin-bottom: 15px; box-sizing: border-box;
-            background: #f9f9f9; color: #333; font-weight: 500;
-        `;
-        
-        input.onfocus = () => { input.style.border = '1px solid #ff9900'; };
-        input.onblur = () => { input.style.border = '1px solid #ddd'; };
-        
-        // Ilce Listesi
-        const list = document.createElement('div');
-        list.style.cssText = 'flex: 1; overflow-y: auto; padding-right: 5px;';
-        
-        list.innerHTML = `<style>
-            #district-search-tab div::-webkit-scrollbar { width: 4px; }
-            #district-search-tab div::-webkit-scrollbar-track { background: transparent; }
-            #district-search-tab div::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        </style>`;
-        
-        const renderList = (filter: string) => {
-            // Sadece listeyi temizle (style etiketini silmeden)
-            Array.from(list.children).forEach(c => { if(c.tagName !== 'STYLE') c.remove(); });
-            
-            this.districtsData.forEach(d => {
-                if (d.name.toLowerCase().includes(filter.toLowerCase('tr-TR'))) {
-                    const item = document.createElement('div');
-                    item.textContent = d.name;
-                    item.style.cssText = 'padding: 12px 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; color: #444; font-weight: 500; transition: 0.2s; border-radius: 6px;';
-                    item.onmouseover = () => { item.style.background = 'rgba(255, 153, 0, 0.1)'; item.style.color = '#ff9900'; };
-                    item.onmouseout = () => { item.style.background = 'transparent'; item.style.color = '#444'; };
-                    item.onclick = () => {
-                        const [x, y, z] = convertGpsToVector(d.lat, d.lng);
-                        window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { x, z } }));
-                    };
-                    list.appendChild(item);
-                }
-            });
-        };
-        renderList('');
-
-        input.oninput = (e) => renderList((e.target as HTMLInputElement).value);
-
-        searchPanel.appendChild(input);
-        searchPanel.appendChild(list);
-        searchTab.appendChild(searchPanel);
-
-        // Uzerine gelince (Hover) acilma animasyonu
-        searchTab.onmouseenter = () => {
-            searchTab.style.width = '320px';
-            searchTab.style.height = '450px';
-            icon.style.opacity = '0';
-            searchPanel.style.opacity = '1';
-            searchPanel.style.pointerEvents = 'auto';
-            searchPanel.style.transform = 'translateX(0)';
-            setTimeout(() => input.focus(), 200);
-        };
-        
-        // Fareden cikinca (Mouse Leave) kapanma animasyonu
-        searchTab.onmouseleave = () => {
-            searchTab.style.width = '45px';
-            searchTab.style.height = '120px';
-            icon.style.opacity = '1';
-            searchPanel.style.opacity = '0';
-            searchPanel.style.pointerEvents = 'none';
-            searchPanel.style.transform = 'translateX(-20px)';
-            input.value = '';
-            renderList('');
-            input.blur();
-        };
-
-        document.body.appendChild(searchTab);
-    }
-
 }
