@@ -1,4 +1,19 @@
-import * as THREE from 'three';
+﻿const fs = require('fs');
+
+// 1. Engine.ts'ye flyTo Event Listener'i ekle
+let engine = fs.readFileSync('src/core/Engine.ts', 'utf8');
+if (!engine.includes('flyToDistrict')) {
+    const listener = `
+    window.addEventListener('flyToDistrict', (e: any) => {
+        this.flyTo(e.detail.x, e.detail.z, 2000);
+    });
+    `;
+    engine = engine.replace("window.addEventListener('clearBusStops'", listener + "\n    window.addEventListener('clearBusStops'");
+    fs.writeFileSync('src/core/Engine.ts', engine);
+}
+
+// 2. DistrictManager'i bastan yazarak UI Sidebar'a donustur
+const managerCode = `import * as THREE from 'three';
 import { convertGpsToVector } from '../utils/coordinates';
 
 export class DistrictManager {
@@ -38,14 +53,14 @@ export class DistrictManager {
 
         const sidebar = document.createElement('div');
         sidebar.id = 'district-sidebar';
-        sidebar.style.cssText = `
+        sidebar.style.cssText = \`
             position: fixed; top: 20px; right: 20px;
             background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255,255,255,0.2);
             border-radius: 10px; padding: 15px; width: 260px;
             color: white; font-family: sans-serif; z-index: 100;
             backdrop-filter: blur(8px); display: flex; flex-direction: column;
             max-height: calc(100vh - 40px);
-        `;
+        \`;
 
         const title = document.createElement('div');
         title.innerHTML = 'İlçe Analiz Raporu <br><span style="font-size:11px; color:#aaa; font-weight:normal;">Tüm Katmanlar</span>';
@@ -56,12 +71,12 @@ export class DistrictManager {
         listContainer.id = 'district-list';
         listContainer.style.cssText = 'overflow-y: auto; flex: 1; padding-right: 5px;';
         // Custom scrollbar
-        listContainer.innerHTML = `<style>
+        listContainer.innerHTML = \`<style>
             #district-list::-webkit-scrollbar { width: 6px; }
             #district-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
             #district-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
             #district-list::-webkit-scrollbar-thumb:hover { background: rgba(255,153,0,0.8); }
-        </style>`;
+        </style>\`;
         
         sidebar.appendChild(listContainer);
         document.body.appendChild(sidebar);
@@ -153,11 +168,11 @@ export class DistrictManager {
 
         sorted.forEach(([name, count]) => {
             const row = document.createElement('div');
-            row.style.cssText = `
+            row.style.cssText = \`
                 display: flex; justify-content: space-between; align-items: center;
                 padding: 8px 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05);
                 border-radius: 6px; cursor: pointer; transition: 0.2s; border: 1px solid transparent;
-            `;
+            \`;
             
             row.onmouseover = () => { row.style.background = 'rgba(255, 153, 0, 0.2)'; row.style.borderColor = 'rgba(255,153,0,0.5)'; };
             row.onmouseout = () => { row.style.background = 'rgba(255,255,255,0.05)'; row.style.borderColor = 'transparent'; };
@@ -188,7 +203,9 @@ export class DistrictManager {
         // Genel toplam bilgisi eklensin (Opsiyonel)
         const totalRow = document.createElement('div');
         totalRow.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 1px solid #555; text-align: center; color: #fff; font-size: 12px;';
-        totalRow.innerHTML = `Haritadaki Toplam Veri: <b>${totalCount}</b>`;
+        totalRow.innerHTML = \`Haritadaki Toplam Veri: <b>\${totalCount}</b>\`;
         listContainer.appendChild(totalRow);
     }
 }
+`;
+fs.writeFileSync('src/core/DistrictManager.ts', managerCode);

@@ -62,6 +62,11 @@ export class Engine {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.pointerDownPos = new THREE.Vector2();
+    
+    window.addEventListener('flyToDistrict', (e: any) => {
+        this.flyTo(e.detail.x, e.detail.z, 2000);
+    });
+    
     window.addEventListener('clearBusStops', () => clearNearestStops(this.scene));
 
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown.bind(this));
