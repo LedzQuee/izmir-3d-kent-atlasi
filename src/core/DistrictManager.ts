@@ -44,7 +44,7 @@ export class DistrictManager {
         if (!rec) return 'İZMİR (GENEL)';
         let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi || 'İZMİR (GENEL)';
         if (typeof val !== 'string') return 'İZMİR (GENEL)';
-        return val.toUpperCase().trim();
+        return val.toLocaleUpperCase('tr-TR').trim();
     }
 
     private extractPoints() {
