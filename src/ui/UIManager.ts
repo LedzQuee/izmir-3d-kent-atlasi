@@ -101,14 +101,19 @@ export class UIManager {
         this.infoBox.innerHTML = html;
         this.infoBox.style.display = 'block';
         
-        // Sağ-orta alana sabitle
+        // Üst-orta alana sabitle (Tek bir çubuk)
         this.infoBox.style.position = 'fixed';
-        this.infoBox.style.top = '50%';
-        this.infoBox.style.right = '320px'; // Sol menülerden ve sağ çekmeceden uzak
-        this.infoBox.style.left = 'auto';
-        this.infoBox.style.transform = 'translateY(-50%)';
-        this.infoBox.style.minWidth = '250px';
-        this.infoBox.style.borderLeft = '4px solid #3b82f6';
+        this.infoBox.style.top = '24px';
+        this.infoBox.style.left = '50%';
+        this.infoBox.style.right = 'auto';
+        this.infoBox.style.transform = 'translateX(-50%)';
+        this.infoBox.style.minWidth = 'unset';
+        this.infoBox.style.whiteSpace = 'nowrap'; // Yazıyı tek satırda tut
+        this.infoBox.style.padding = '12px 24px';
+        this.infoBox.style.borderRadius = '30px'; // Hap şeklinde
+        this.infoBox.style.borderLeft = 'none';
+        this.infoBox.style.border = '1px solid rgba(255,255,255,0.15)';
+        this.infoBox.style.boxShadow = '0 10px 30px -10px rgba(0, 0, 0, 0.6)';
     }
 
     static hideInfo() { this.infoBox.style.display = 'none'; }

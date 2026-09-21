@@ -254,10 +254,7 @@ export class Engine {
                 
                 if (!isNaN(lat) && !isNaN(lng)) {
                     UIManager.showInfo(`
-                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
-                        <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
-                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
-                        <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
+                        <span style="color:#93c5fd;font-weight:600;margin-right:8px">${obj.userData.layerName || 'Bilinmiyor'}:</span><span style="color:#f8fafc;font-weight:500;font-size:14px">${name}</span>
                     `);
 
                     this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
@@ -276,10 +273,7 @@ export class Engine {
                     
                     if (!isNaN(lat) && !isNaN(lng)) {
                         UIManager.showInfo(`
-                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
-                            <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
-                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
-                            <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
+                            <span style="color:#93c5fd;font-weight:600;margin-right:8px">${obj.userData.layerName || 'Bilinmiyor'}:</span><span style="color:#f8fafc;font-weight:500;font-size:14px">${name}</span>
                         `);
 
                         this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
