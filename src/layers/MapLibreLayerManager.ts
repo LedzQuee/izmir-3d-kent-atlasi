@@ -145,7 +145,7 @@ export class MapLibreLayerManager {
                 'circle-stroke-width': 2,
                 'circle-stroke-color': 'rgba(255, 255, 255, 0.5)'
             }
-        }, 'three-js-layer');
+        });
 
         // Küme içi Sayılar
         this.map.addLayer({
@@ -161,7 +161,7 @@ export class MapLibreLayerManager {
             paint: {
                 'text-color': '#ffffff'
             }
-        }, 'three-js-layer');
+        });
 
         // Tekil Noktalar (Kümelenmemiş)
         this.map.addLayer({
@@ -172,10 +172,11 @@ export class MapLibreLayerManager {
             paint: {
                 // Rengini özelliklerden al
                 'circle-color': ['get', 'color'],
-                'circle-radius': 8,
-                'circle-stroke-width': 2,
-                'circle-stroke-color': 'rgba(255, 255, 255, 0.5)'
+                'circle-radius': 14,
+                'circle-blur': 0.2,
+                'circle-stroke-width': 4,
+                'circle-stroke-color': 'rgba(255, 255, 255, 1)'
             }
-        }, 'three-js-layer');
+        });
     }
 }
