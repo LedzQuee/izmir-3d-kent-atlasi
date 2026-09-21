@@ -233,17 +233,15 @@ export class Engine {
             const hits = this.raycaster.intersectObjects(this.getInteractableObjects(), true);
 
             if (hits.length === 0) { 
-                if ((this as any).activePopup) { (this as any).activePopup.remove(); (this as any).activePopup = null; }
+                UIManager.hideInfo();
                 return; 
             }
 
             const hit = hits[0];
             const obj = hit.object as any;
-            
-            // DEBUG TOAST
-            UIManager.showToast(`Tiklandi: ${obj.type}, Layer: ${obj.userData?.layerName || 'Yok'}, Record var mi: ${!!obj.userData?.record}`);
 
             if (obj.userData?.isDistrict) {
+                UIManager.hideInfo();
                 window.dispatchEvent(new CustomEvent('flyToDistrict', {
                     detail: { lat: obj.userData.lat, lng: obj.userData.lng }
                 }));
@@ -255,23 +253,17 @@ export class Engine {
                 const lng = parseFloat(r.BOYLAM || r.boylam);
                 
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    if ((this as any).activePopup) (this as any).activePopup.remove();
-                    
-                    (this as any).activePopup = new maplibregl.Popup({ offset: [0, -15], className: 'custom-popup', closeButton: false })
-                        .setLngLat([lng, lat])
-                        .setHTML(`
-                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
-                            <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
-                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
-                            <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
-                        `)
-                        .addTo(this.map!);
+                    UIManager.showInfo(`
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
+                        <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
+                        <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
+                    `);
 
                     this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
                 }
             } else if ((obj.isInstancedMesh || obj.type === 'InstancedMesh') && obj.userData?.records) {
                 if (hit.instanceId === undefined) {
-                    UIManager.showToast('HATA: instanceId tanimsiz!', true);
                     return;
                 }
                 const r = obj.userData.records[hit.instanceId];
@@ -283,22 +275,15 @@ export class Engine {
                     const lng = parseFloat(r.BOYLAM || r.boylam);
                     
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        if ((this as any).activePopup) (this as any).activePopup.remove();
-                        
-                        (this as any).activePopup = new maplibregl.Popup({ offset: [0, -15], className: 'custom-popup', closeButton: false })
-                            .setLngLat([lng, lat])
-                            .setHTML(`
-                                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
-                                <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
-                                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
-                                <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
-                            `)
-                            .addTo(this.map!);
+                        UIManager.showInfo(`
+                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
+                            <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
+                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
+                            <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
+                        `);
 
                         this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
                     }
-                } else {
-                    UIManager.showToast('HATA: Kayit bulunamadi. InstanceID: ' + hit.instanceId, true);
                 }
             }
         });

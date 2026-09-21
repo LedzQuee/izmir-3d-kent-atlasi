@@ -97,14 +97,18 @@ export class UIManager {
         }, 3000);
     }
 
-    static showInfo(html: string, event: MouseEvent) {
+    static showInfo(html: string) {
         this.infoBox.innerHTML = html;
         this.infoBox.style.display = 'block';
-        let left = event.clientX + 15; let top = event.clientY + 15;
-        const rect = this.infoBox.getBoundingClientRect();
-        if (left + rect.width > window.innerWidth) left = event.clientX - rect.width - 15;
-        if (top + rect.height > window.innerHeight) top = event.clientY - rect.height - 15;
-        this.infoBox.style.left = left + 'px'; this.infoBox.style.top = top + 'px';
+        
+        // Sağ-orta alana sabitle
+        this.infoBox.style.position = 'fixed';
+        this.infoBox.style.top = '50%';
+        this.infoBox.style.right = '320px'; // Sol menülerden ve sağ çekmeceden uzak
+        this.infoBox.style.left = 'auto';
+        this.infoBox.style.transform = 'translateY(-50%)';
+        this.infoBox.style.minWidth = '250px';
+        this.infoBox.style.borderLeft = '4px solid #3b82f6';
     }
 
     static hideInfo() { this.infoBox.style.display = 'none'; }
