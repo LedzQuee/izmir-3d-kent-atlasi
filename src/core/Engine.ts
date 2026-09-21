@@ -14,6 +14,7 @@ export class Engine {
     public districtManager: DistrictManager | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
+        UIManager.init();
         this.scene = new THREE.Scene();
         this.camera = new THREE.Camera(); // MapLibre layer'da projection matrix ile ezilecek
         
