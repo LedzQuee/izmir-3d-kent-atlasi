@@ -17,6 +17,9 @@ export class HTMLMarkerManager {
             radius: 50,
             maxZoom: 16
         });
+        
+        // Veri gelmeden once harita hareket ederse hata vermemesi icin bos diziyle baslat
+        this.supercluster.load([]);
 
         // Harita hareket ettikce markerlari guncelle
         this.map.on('move', () => this.updateMarkers());
