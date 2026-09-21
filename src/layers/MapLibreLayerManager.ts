@@ -37,6 +37,11 @@ export class MapLibreLayerManager {
         this.map = engine.map;
         if (!this.map) return;
 
+        // Add layers IMMEDIATELY so they are registered before Three.js corrupts the render loop sequence
+        if (!this.map.getSource('izmir-pois')) {
+            this.addMapLibreLayers();
+        }
+
         // Bütün layer'lari topla
         const featurePromises = POI_LAYERS.map(async (config) => {
             this.activeLayerIds.add(config.id);
@@ -71,7 +76,6 @@ export class MapLibreLayerManager {
         const featureArrays = await Promise.all(featurePromises);
         this.allFeatures = featureArrays.flat();
 
-        this.addMapLibreLayers();
         this.updateData();
     }
 
@@ -141,7 +145,7 @@ export class MapLibreLayerManager {
                 'circle-stroke-width': 2,
                 'circle-stroke-color': 'rgba(255, 255, 255, 0.5)'
             }
-        });
+        }, 'three-js-layer');
 
         // Küme içi Sayılar
         this.map.addLayer({
@@ -157,7 +161,7 @@ export class MapLibreLayerManager {
             paint: {
                 'text-color': '#ffffff'
             }
-        });
+        }, 'three-js-layer');
 
         // Tekil Noktalar (Kümelenmemiş)
         this.map.addLayer({
@@ -172,6 +176,6 @@ export class MapLibreLayerManager {
                 'circle-stroke-width': 2,
                 'circle-stroke-color': 'rgba(255, 255, 255, 0.5)'
             }
-        });
+        }, 'three-js-layer');
     }
 }

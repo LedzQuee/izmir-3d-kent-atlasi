@@ -29,7 +29,7 @@ const engine = new Engine();
 
 // Efsaneyi (Legend) dinamik oluştur
 const legendItems = [
-    { name: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', onToggle: (v: boolean) => {
+    { label: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', onToggle: (v: boolean) => {
         UIManager.busStopMode = v;
         if(!v && window.engineInstance) { 
             clearNearestStops(window.engineInstance.scene); 
