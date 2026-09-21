@@ -257,8 +257,10 @@ export class Engine {
                     (this as any).activePopup = new maplibregl.Popup({ offset: [0, -15], className: 'custom-popup', closeButton: false })
                         .setLngLat([lng, lat])
                         .setHTML(`
-                            <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
-                            <div style="font-size:13px">${name}</div>
+                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
+                            <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
+                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
+                            <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
                         `)
                         .addTo(this.map!);
 
@@ -283,8 +285,10 @@ export class Engine {
                         (this as any).activePopup = new maplibregl.Popup({ offset: [0, -15], className: 'custom-popup', closeButton: false })
                             .setLngLat([lng, lat])
                             .setHTML(`
-                                <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
-                                <div style="font-size:13px">${name}</div>
+                                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Katman</div>
+                                <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:6px">${obj.userData.layerName || 'Bilinmiyor'}</div>
+                                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:2px">Kayıt Adı / Detay</div>
+                                <div style="font-size:14px;color:#f8fafc;font-weight:500;line-height:1.4">${name}</div>
                             `)
                             .addTo(this.map!);
 
