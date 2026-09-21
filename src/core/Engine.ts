@@ -232,7 +232,10 @@ export class Engine {
             this.updateMouseRay(e);
             const hits = this.raycaster.intersectObjects(this.getInteractableObjects(), true);
 
-            if (hits.length === 0) { UIManager.hideInfo(); return; }
+            if (hits.length === 0) { 
+                if ((this as any).activePopup) { (this as any).activePopup.remove(); (this as any).activePopup = null; }
+                return; 
+            }
 
             const hit = hits[0];
             const obj = hit.object as any;
@@ -243,17 +246,23 @@ export class Engine {
                 }));
             } else if (obj.userData?.record) {
                 const r = obj.userData.record;
-                const name = r.ADI || r.Adi || r.adi || 'Bilinmiyor';
-                UIManager.showInfo(`
-                    <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
-                    <div style="font-size:13px">${name}</div>
-                `, e as MouseEvent);
+                const name = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
                 
-                // Noktaya zoom yap
                 const lat = parseFloat(r.ENLEM || r.enlem);
                 const lng = parseFloat(r.BOYLAM || r.boylam);
+                
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    this.map?.flyTo({ center: [lng, lat], zoom: 16, essential: true });
+                    if ((this as any).activePopup) (this as any).activePopup.remove();
+                    
+                    (this as any).activePopup = new maplibregl.Popup({ offset: [0, -15], className: 'custom-popup', closeButton: false })
+                        .setLngLat([lng, lat])
+                        .setHTML(`
+                            <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
+                            <div style="font-size:13px">${name}</div>
+                        `)
+                        .addTo(this.map!);
+
+                    this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
                 }
             } else if ((obj.isInstancedMesh || obj.type === 'InstancedMesh') && obj.userData?.records) {
                 if (hit.instanceId === undefined) {
@@ -262,18 +271,24 @@ export class Engine {
                 }
                 const r = obj.userData.records[hit.instanceId];
                 if (r) {
-                    let name = r.ADI || r.Adi || r.adi;
+                    let name = r.ADI || r.Adi || r.adi || r.ACIKLAMA;
                     if (!name) name = 'Bulunamadi. Keys: ' + Object.keys(r).join(', ');
-                    
-                    UIManager.showInfo(`
-                        <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
-                        <div style="font-size:13px">${name}</div>
-                    `, e as MouseEvent);
                     
                     const lat = parseFloat(r.ENLEM || r.enlem);
                     const lng = parseFloat(r.BOYLAM || r.boylam);
+                    
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        this.map?.flyTo({ center: [lng, lat], zoom: 16, essential: true });
+                        if ((this as any).activePopup) (this as any).activePopup.remove();
+                        
+                        (this as any).activePopup = new maplibregl.Popup({ offset: [0, -15], className: 'custom-popup', closeButton: false })
+                            .setLngLat([lng, lat])
+                            .setHTML(`
+                                <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
+                                <div style="font-size:13px">${name}</div>
+                            `)
+                            .addTo(this.map!);
+
+                        this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
                     }
                 } else {
                     UIManager.showToast('HATA: Kayit bulunamadi. InstanceID: ' + hit.instanceId, true);
