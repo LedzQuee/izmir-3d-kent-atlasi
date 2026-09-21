@@ -1,5 +1,8 @@
 ﻿import * as THREE from 'three';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
+import { UIManager } from '../ui/UIManager';
+import { fetchNearestStops } from '../layers/OtobusDuraklariLayer';
+import { convertGpsToVector } from '../utils/coordinates';
 import { KONAK_CENTER } from '../utils/coordinates';
 import { DistrictManager } from './DistrictManager';
 
@@ -91,12 +94,12 @@ export class Engine {
         this.map = new maplibregl.Map({
             container: container.id,
             style: pureStyle as any,
-            center: [KONAK_CENTER.lng, KONAK_CENTER.lat],
+            center: [KONAK_CENTER.lng, KONAK_CENTER.lat] as [number, number] as [number, number],
             zoom: 13,
             pitch: 60,
             bearing: -20,
             maxPitch: 85,
-            antialias: true
+            // antialias: true
         });
 
         this.map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
@@ -107,11 +110,7 @@ export class Engine {
         });
 
         // ESHOT Tiklama (Raycaster yerine MapLibre click kullanarak koordinatlari alacagiz)
-        this.map.on('click', (e) => {
-            const { UIManager } = require('../ui/UIManager');
-            const { fetchNearestStops } = require('../layers/OtobusDuraklariLayer');
-            const { convertGpsToVector } = require('../utils/coordinates');
-            
+        this.map.on('click', (e: any) => {
             if (UIManager && UIManager.busStopMode) {
                 const [x, y, z] = convertGpsToVector(e.lngLat.lat, e.lngLat.lng);
                 fetchNearestStops(this.scene, x, z);
@@ -133,10 +132,12 @@ export class Engine {
         });
     }
 
+    public start() {}
+
     private addThreeJSLayer() {
         const engine = this;
         
-        const modelOrigin = [KONAK_CENTER.lng, KONAK_CENTER.lat];
+        const modelOrigin: [number, number] = [KONAK_CENTER.lng, KONAK_CENTER.lat];
         const merc = maplibregl.MercatorCoordinate.fromLngLat(modelOrigin, 0);
         const scale = merc.meterInMercatorCoordinateUnits();
 
@@ -144,15 +145,15 @@ export class Engine {
             id: '3d-model',
             type: 'custom',
             renderingMode: '3d',
-            onAdd: function (map, gl) {
+            onAdd: function (map: any, gl: WebGLRenderingContext) {
                 engine.renderer = new THREE.WebGLRenderer({
                     canvas: map.getCanvas(),
                     context: gl,
-                    antialias: true
+                    // antialias: true
                 });
                 engine.renderer.autoClear = false;
             },
-            render: function (gl, matrix) {
+            render: function (gl: WebGLRenderingContext, matrix: any) {
                 if (!engine.renderer) return;
 
                 const m = new THREE.Matrix4().fromArray(matrix);
@@ -174,7 +175,7 @@ export class Engine {
                 
                 engine.renderer.state.reset();
                 engine.renderer.render(engine.scene, engine.camera);
-                map.triggerRepaint();
+                engine.map!.triggerRepaint();
             }
         };
 
@@ -189,11 +190,11 @@ export class Engine {
         if (!this.map) return;
         const canvas = this.map.getCanvasContainer();
         
-        canvas.addEventListener('pointerdown', (e) => {
+        canvas.addEventListener('pointerdown', (e: any) => {
             this.pointerDownPos.set(e.clientX, e.clientY);
         });
 
-        canvas.addEventListener('pointermove', (e) => {
+        canvas.addEventListener('pointermove', (e: any) => {
             this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             this.raycaster.setFromCamera(this.mouse, this.camera);
@@ -208,11 +209,11 @@ export class Engine {
             }
         });
 
-        canvas.addEventListener('pointerup', (e) => {
+        canvas.addEventListener('pointerup', (e: any) => {
             const distance = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);
             if (distance > 5) return;
             
-            const { UIManager } = require('../ui/UIManager');
+            
             this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             this.raycaster.setFromCamera(this.mouse, this.camera);

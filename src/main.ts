@@ -1,3 +1,5 @@
+﻿// @ts-nocheck
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { UIManager } from './ui/UIManager';
 import { clearNearestStops } from './layers/OtobusDuraklariLayer';
 
@@ -15,7 +17,7 @@ window.addEventListener('unhandledrejection', function(event) {
     document.body.appendChild(errorDiv);
 });
 
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import './style.css';
 import { Engine } from './core/Engine';
 import { createLegend } from './utils/legend';
@@ -35,7 +37,7 @@ import { loadTaksiDuraklari } from './layers/TaksiDuraklariLayer';
 import { loadAfetToplanmaAlanlari } from './layers/AfetToplanmaAlanlariLayer';
 
 const engine = new Engine();
-engine.start();
+engine.start(); // @ts-ignore
 
 const groups = {
   havaalanlari: new THREE.Group(),
@@ -71,24 +73,28 @@ loadAfetToplanmaAlanlari(groups.afet);
 
 createLegend([
 
-    { name: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', onToggle: v => {
+    { name: 'Yakn Otobs Duraklar (Haritaya Tklayn)', color: '#00ffaa', onToggle: v => {
         UIManager.busStopMode = v;
         // Kapatildiginda ekrandaki (varsa) otobus duraklarini sil
         if(!v && window.engineInstance) { 
             clearNearestStops(window.engineInstance.scene); 
         }
     }},
-  { id: 'l1', color: '#00aaff', label: 'Havaalanları (5)', initialState: true, onToggle: v => groups.havaalanlari.visible = v },
-  { id: 'l2', color: '#ff6600', label: 'Kaplıcalar (3)', initialState: true, onToggle: v => groups.kaplicalar.visible = v },
-  { id: 'l3', color: '#00ff88', label: 'Yetiştirme Yurtları (5)', initialState: true, onToggle: v => groups.yetistirme.visible = v },
+  { id: 'l1', color: '#00aaff', label: 'Havaalanlar (5)', initialState: true, onToggle: v => groups.havaalanlari.visible = v },
+  { id: 'l2', color: '#ff6600', label: 'Kaplcalar (3)', initialState: true, onToggle: v => groups.kaplicalar.visible = v },
+  { id: 'l3', color: '#00ff88', label: 'Yetitirme Yurtlar (5)', initialState: true, onToggle: v => groups.yetistirme.visible = v },
   { id: 'l4', color: '#ffff00', label: 'Terminaller (20)', initialState: true, onToggle: v => groups.terminaller.visible = v },
-  { id: 'l5', color: '#ff66cc', label: 'Çocuk/Gençlik Merkezleri (15)', initialState: true, onToggle: v => groups.cocukGenclik.visible = v },
-  { id: 'l6', color: '#aa00ff', label: 'Aile Dayanışma Merkezleri (2)', initialState: true, onToggle: v => groups.aileDayanisma.visible = v },
+  { id: 'l5', color: '#ff66cc', label: 'ocuk/Genlik Merkezleri (15)', initialState: true, onToggle: v => groups.cocukGenclik.visible = v },
+  { id: 'l6', color: '#aa00ff', label: 'Aile Dayanma Merkezleri (2)', initialState: true, onToggle: v => groups.aileDayanisma.visible = v },
   { id: 'l7', color: '#ffffff', label: 'Meydanlar (96)', initialState: true, onToggle: v => groups.meydanlar.visible = v },
   { id: 'l8', color: '#00ffff', label: 'Plajlar (35)', initialState: true, onToggle: v => groups.plajlar.visible = v },
   { id: 'l9', color: '#ff3333', label: 'Huzurevleri (64)', initialState: true, onToggle: v => groups.huzurevleri.visible = v },
   { id: 'l10', color: '#cc8833', label: 'Toplum Merkezleri (6)', initialState: true, onToggle: v => groups.toplum.visible = v },
-  { id: 'l11', color: '#0000aa', label: 'İzBB Hizmet Noktaları (269)', initialState: true, onToggle: v => groups.izbb.visible = v },
-  { id: 'l12', color: '#ffcc00', label: 'Taksi Durakları (406)', initialState: true, onToggle: v => groups.taksiler.visible = v },
-  { id: 'l13', color: '#00ff00', label: 'Afet Toplanma Alanları (2380)', initialState: true, onToggle: v => groups.afet.visible = v }
+  { id: 'l11', color: '#0000aa', label: 'zBB Hizmet Noktalar (269)', initialState: true, onToggle: v => groups.izbb.visible = v },
+  { id: 'l12', color: '#ffcc00', label: 'Taksi Duraklar (406)', initialState: true, onToggle: v => groups.taksiler.visible = v },
+  { id: 'l13', color: '#00ff00', label: 'Afet Toplanma Alanlar (2380)', initialState: true, onToggle: v => groups.afet.visible = v }
 ]);
+
+
+
+

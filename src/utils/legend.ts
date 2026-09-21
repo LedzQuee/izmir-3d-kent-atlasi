@@ -1,4 +1,4 @@
-
+﻿
 export function createLegend(items: { label: string, color: string, onToggle: (checked: boolean) => void }[]) {
   // Eger eski kutucuklu id'ler kaldiysa onlari sil
   const existing1 = document.getElementById('map-legend');
@@ -22,12 +22,12 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
   header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px;';
   
   const title = document.createElement('div');
-  title.textContent = 'Harita Katmanları';
+  title.textContent = 'Harita KatmanlarÄ±';
   title.style.cssText = 'font-weight: bold; color: #aad4ff;';
   
   const toggleBtn = document.createElement('button');
-  toggleBtn.textContent = '−';
-  toggleBtn.title = "Menüyü Küçült";
+  toggleBtn.textContent = 'âˆ’';
+  toggleBtn.title = "MenÃ¼yÃ¼ KÃ¼Ã§Ã¼lt";
   toggleBtn.style.cssText = 'background: none; border: none; color: white; cursor: pointer; font-size: 18px; font-weight: bold; padding: 0 5px;';
   
   header.appendChild(title);
@@ -59,7 +59,7 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
     isExpanded = !isExpanded;
     content.style.maxHeight = isExpanded ? "600px" : "0px";
     content.style.opacity = isExpanded ? "1" : "0";
-    toggleBtn.textContent = isExpanded ? '−' : '+';
+    toggleBtn.textContent = isExpanded ? 'âˆ’' : '+';
     legend.style.paddingBottom = isExpanded ? "15px" : "8px"; 
     header.style.marginBottom = isExpanded ? "8px" : "0px";
     header.style.borderBottom = isExpanded ? "1px solid #444" : "none";
@@ -71,7 +71,7 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
     const anyHidden = rowElements.some(r => !r.state.visible);
     if (anyHidden) {
       allVisible = false;
-      btnToggleAll.textContent = 'Hepsini Göster';
+      btnToggleAll.textContent = 'Hepsini GÃ¶ster';
     } else {
       allVisible = true;
       btnToggleAll.textContent = 'Hepsini Gizle';
@@ -89,7 +89,7 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
     dot.style.cssText = `width: 14px; height: 14px; border-radius: 50%; background-color: ${item.color}; box-shadow: 0 0 8px ${item.color}; transition: transform 0.2s; transform: scale(1);`;
 
     const label = document.createElement('span');
-    label.textContent = (item.label || 'İsimsiz Katman');
+    label.textContent = (item.label || 'Ä°simsiz Katman');
 
     row.onclick = () => {
       state.visible = !state.visible;
@@ -127,3 +127,4 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
   legend.appendChild(content);
   document.body.appendChild(legend);
 }
+
