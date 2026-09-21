@@ -56,6 +56,10 @@ export class Engine {
         });
     }
 
+    public start() {
+        // MapLibre kendi event loop'u uzerinden calisir.
+    }
+
     private initMapLibre(container: HTMLDivElement) {
         const style: any = {
             version: 8,
