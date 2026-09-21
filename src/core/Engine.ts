@@ -239,6 +239,9 @@ export class Engine {
 
             const hit = hits[0];
             const obj = hit.object as any;
+            
+            // DEBUG TOAST
+            UIManager.showToast(`Tiklandi: ${obj.type}, Layer: ${obj.userData?.layerName || 'Yok'}, Record var mi: ${!!obj.userData?.record}`);
 
             if (obj.userData?.isDistrict) {
                 window.dispatchEvent(new CustomEvent('flyToDistrict', {
