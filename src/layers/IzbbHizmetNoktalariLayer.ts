@@ -1,5 +1,5 @@
 import { ApiService } from '../api/ApiService';
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { convertGpsToVector } from '../utils/coordinates';
 export async function loadIzbbHizmetNoktalari(scene: THREE.Object3D) {
   try {

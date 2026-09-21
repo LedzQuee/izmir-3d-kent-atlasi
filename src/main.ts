@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { UIManager } from './ui/UIManager';
 import { clearNearestStops } from './layers/OtobusDuraklariLayer';
@@ -37,7 +37,7 @@ import { loadTaksiDuraklari } from './layers/TaksiDuraklariLayer';
 import { loadAfetToplanmaAlanlari } from './layers/AfetToplanmaAlanlariLayer';
 
 const engine = new Engine();
-engine.start(); // @ts-ignore
+(window as any).engineInstance = engine;
 
 const groups = {
   havaalanlari: new THREE.Group(),

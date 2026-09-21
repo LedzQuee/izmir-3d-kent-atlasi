@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { convertVectorToGps, convertGpsToVector } from '../utils/coordinates';
 import { ApiService } from '../api/ApiService';
 import { UIManager } from '../ui/UIManager';
