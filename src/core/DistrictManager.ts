@@ -61,7 +61,7 @@ export class DistrictManager {
         if (sidebar) sidebar.remove();
     }
 
-    public update() {
+    public update(zoom: number = 13) {
         let currentNodes = 0;
         this.scene.traverse(node => {
             if (node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.records || node.userData.record)) {
@@ -71,47 +71,41 @@ export class DistrictManager {
             }
         });
 
-        
         if (currentNodes !== this.lastChildrenCount && currentNodes > 0) {
             this.extractPoints();
             this.recalculateCounts();
             this.lastChildrenCount = currentNodes;
         }
 
-        // --- NOKTALARIN YUKSEKLIGE GORE GIZLENMESI ---
-        const altitude = this.camera.position.y;
-        const SHOW_POINTS_THRESHOLD = 1800; // Yere 1800 birimden fazla yaklasinca veriler belirir
-
-        const shouldShowPoints = true; // LOD disabled temporarily
+        // Noktalarin genel gorunurlugu (Zoom'a bagli acilip kapanabilir ama simdilik hep acik tutalim, MapLibre handle etsin)
+        const shouldShowPoints = true; 
         if (this.pointsVisibleForLOD !== shouldShowPoints) {
             this.pointsVisibleForLOD = shouldShowPoints;
             this.setAllOriginalsVisible(shouldShowPoints);
         }
 
-        // --- ETIKETLERIN MESAFEYE GORE YUMUSAK SAYDAMLASMASI (SMOOTH FADE) ---
-        const FADE_START = 2200; // Bu mesafede saydamlasmaya baslar
-        const FADE_END = 1200; // Bu mesafeden daha yakindaysa tamamen kaybolur
+        // Ilce isimlerinin (Sprite) yakinlasinca kaybolmasi
+        // zoom > 13.5 -> saydamlasmaya baslar
+        // zoom > 14.5 -> tamamen kaybolur
+        const FADE_START_ZOOM = 13.5;
+        const FADE_END_ZOOM = 14.5;
 
         this.districtGroup.children.forEach(child => {
             if (child.type === 'Sprite') {
                 const sprite = child as THREE.Sprite;
-                
-                // Kamera ile rozet arasindaki 3D mesafeyi olc
-                const dist = this.camera.position.distanceTo(sprite.position);
-
                 const material = sprite.material as THREE.SpriteMaterial;
 
-                if (dist > FADE_START) {
+                if (zoom < FADE_START_ZOOM) {
                     material.opacity = 1;
                     sprite.visible = true;
-                } else if (dist < FADE_END) {
+                } else if (zoom > FADE_END_ZOOM) {
                     material.opacity = 0;
-                    sprite.visible = false; // Render performansini artirmak icin gizle
+                    sprite.visible = false;
                 } else {
                     sprite.visible = true;
-                    // Lineer yumusak gecis (0.0 ile 1.0 arasi opacity)
-                    const opacity = (dist - FADE_END) / (FADE_START - FADE_END);
-                    material.opacity = opacity;
+                    // FADE_START'ta 1, FADE_END'de 0 olmali
+                    const progress = (zoom - FADE_START_ZOOM) / (FADE_END_ZOOM - FADE_START_ZOOM);
+                    material.opacity = 1 - progress;
                 }
             }
         });

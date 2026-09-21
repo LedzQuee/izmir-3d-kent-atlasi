@@ -121,9 +121,7 @@ export class Engine {
         this.map!.on('render', () => {
             if (!this.districtManager) return;
             const zoom = this.map!.getZoom();
-            // Zoom'dan yaklasik irtifa: zoom 13 ~4000m, zoom 17 ~250m
-            this.camera.position.y = Math.max(0, (17 - zoom) * 800);
-            this.districtManager.update();
+            this.districtManager.update(zoom);
         });
     }
 
@@ -154,7 +152,7 @@ export class Engine {
             type: 'custom',
             renderingMode: '3d',
 
-            onAdd(_map: any, gl: WebGLRenderingContext) {
+            onAdd(_map: any, gl: WebGL2RenderingContext) {
                 engine.renderer = new THREE.WebGLRenderer({
                     canvas: _map.getCanvas(),
                     context: gl,
@@ -163,24 +161,23 @@ export class Engine {
                 engine.renderer.autoClear = false;
             },
 
-            render(_gl: any, args: any) {
+            render(args: any) {
                 if (!engine.renderer) return;
 
-                // MapLibre v4+ API uyumlulugu: matrix parametresi obje veya dizi olabilir
                 let matrixData: any;
-                if (Array.isArray(args)) {
-                    matrixData = args;
-                } else if (args && args.defaultProjectionData) {
+                if (args.modelViewProjectionMatrix) {
+                    matrixData = args.modelViewProjectionMatrix;
+                } else if (args.defaultProjectionData && args.defaultProjectionData.mainMatrix) {
                     matrixData = args.defaultProjectionData.mainMatrix;
-                } else {
+                } else if (args.length === 16) {
                     matrixData = args;
+                } else {
+                    return; // args matris degilse cizim yapma
                 }
 
-                // MapLibre'nin view-projection matrisi
                 const m = new THREE.Matrix4().fromArray(matrixData);
 
-                // Model matrisi: translate -> scale -> rotate
-                // Bu MapLibre'nin RESMI Three.js entegrasyon orneginden alinmistir
+                // Model matrisi (MapLibre resmi ornegi)
                 const l = new THREE.Matrix4()
                     .makeTranslation(
                         modelTransform.translateX,
@@ -190,13 +187,12 @@ export class Engine {
                     .scale(
                         new THREE.Vector3(
                             modelTransform.scale,
-                            -modelTransform.scale,  // Y ekseni ters (Mercator kurali)
+                            -modelTransform.scale,
                             modelTransform.scale
                         )
                     )
                     .multiply(rotationX);
 
-                // camera.projectionMatrix = viewProjection * modelMatrix
                 engine.camera.projectionMatrix = m.multiply(l);
                 engine.camera.projectionMatrixInverse.copy(engine.camera.projectionMatrix).invert();
 
