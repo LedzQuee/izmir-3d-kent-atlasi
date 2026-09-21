@@ -170,10 +170,10 @@ export class Engine {
                 if (!engine.renderer) return;
 
                 let matrixData: any;
-                if (args.modelViewProjectionMatrix) {
-                    matrixData = args.modelViewProjectionMatrix;
-                } else if (args.defaultProjectionData && args.defaultProjectionData.mainMatrix) {
+                if (args.defaultProjectionData && args.defaultProjectionData.mainMatrix) {
                     matrixData = args.defaultProjectionData.mainMatrix;
+                } else if (args.modelViewProjectionMatrix) {
+                    matrixData = args.modelViewProjectionMatrix;
                 } else if (args.length === 16) {
                     matrixData = args;
                 } else {
