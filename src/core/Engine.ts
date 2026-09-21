@@ -195,6 +195,12 @@ export class Engine {
                 engine.scene.traverse((obj: any) => { obj.frustumCulled = false; });
 
                 engine.renderer.resetState();
+                
+                // Cok onemli: MapLibre depth buffer'i doldurdugu icin Three.js objeleri
+                // yer yuzeyinin altinda kalmis gibi gorunebilir (Depth Test).
+                // Ekrana cizilip cizilmediklerini kesin gormek icin depth'i temizliyoruz.
+                engine.renderer.clearDepth();
+                
                 engine.renderer.render(engine.scene, engine.camera);
                 engine.map!.triggerRepaint();
             }
