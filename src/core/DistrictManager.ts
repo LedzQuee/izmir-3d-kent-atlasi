@@ -313,11 +313,36 @@ export class DistrictManager {
             searchTimeout = setTimeout(() => {
                 // @ts-ignore
                 const allFeatures = window.allMapLibreFeatures || [];
-                const matches = allFeatures.filter((f: any) => f.properties.recordName.toLowerCase().includes(query)).slice(0, 15);
+                const matches = allFeatures.filter((f: any) => f.properties.recordName.toLowerCase().includes(query));
+                
+                // Akilli siralama: Tam eslesenleri veya kelime olarak eslesenleri basa al
+                matches.sort((a: any, b: any) => {
+                    const nameA = a.properties.recordName.toLowerCase();
+                    const nameB = b.properties.recordName.toLowerCase();
+                    
+                    // 1. Bastan baslama (Exact Prefix)
+                    const startsA = nameA.startsWith(query);
+                    const startsB = nameB.startsWith(query);
+                    if (startsA && !startsB) return -1;
+                    if (!startsA && startsB) return 1;
+                    
+                    // 2. Kelime basi eslesmesi (Orn: ' 5 ' vs '15')
+                    // Noktalama isaretlerini de bosluk gibi sayalim
+                    const wordRegex = new RegExp(`(^|\\s|\\W)${query}(\\s|\\W|$)`);
+                    const wordA = wordRegex.test(nameA);
+                    const wordB = wordRegex.test(nameB);
+                    if (wordA && !wordB) return -1;
+                    if (!wordA && wordB) return 1;
+                    
+                    // 3. Normal alfabetik/numerik siralama
+                    return nameA.localeCompare(nameB, 'tr-TR', { numeric: true });
+                });
+                
+                const topMatches = matches.slice(0, 15);
                 
                 searchResults.innerHTML = '';
-                if (matches.length > 0) {
-                    matches.forEach((f: any) => {
+                if (topMatches.length > 0) {
+                    topMatches.forEach((f: any) => {
                         const div = document.createElement('div');
                         div.style.cssText = 'padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; font-size: 12px; color: #cbd5e1; display:flex; align-items:center; gap:8px; line-height: 1.3;';
                         div.innerHTML = `<div style="width:8px;height:8px;border-radius:50%;background:${f.properties.color};flex-shrink:0;"></div> <span>${f.properties.recordName}</span>`;
