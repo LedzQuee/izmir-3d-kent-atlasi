@@ -1,6 +1,6 @@
 import { ApiService } from '../api/ApiService';
 import * as THREE from 'three';
-import { convertGpsToVector } from '../utils/coordinates';
+import { createElegantMarker } from '../utils/MarkerFactory';
 
 export async function loadAfetToplanmaAlanlari(scene: THREE.Object3D) {
   try {
@@ -8,19 +8,16 @@ export async function loadAfetToplanmaAlanlari(scene: THREE.Object3D) {
     if (!data) return;
     const records = data.onemliyer ?? [];
 
-    const geometry = new THREE.SphereGeometry(15, 8, 8);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    
+    
 
     let validCount = 0;
     records.forEach((record: any) => {
       const lat = parseFloat(record.ENLEM || record.enlem);
       const lng = parseFloat(record.BOYLAM || record.boylam);
       if (!isNaN(lat) && !isNaN(lng)) {
-        const [x, y, z] = convertGpsToVector(lat, lng);
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(x, y, z);
-        mesh.userData = { record, layerName: 'Afet Toplanma Alanı' };
-        scene.add(mesh);
+        const marker = createElegantMarker(lat, lng, 0x00ff00, 'Afet Toplanma Alanı', record);
+        if (marker) scene.add(marker);
         validCount++;
       }
     });
