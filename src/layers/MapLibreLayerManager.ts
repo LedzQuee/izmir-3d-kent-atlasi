@@ -1,7 +1,6 @@
 import { ApiService } from '../api/ApiService';
 import * as maplibregl from 'maplibre-gl';
 import { Engine } from '../core/Engine';
-import { UIManager } from '../ui/UIManager';
 
 export interface LayerConfig {
     id: string;
@@ -33,17 +32,14 @@ export class MapLibreLayerManager {
     static map: maplibregl.Map | null = null;
     static engine: Engine | null = null;
 
+    // Source ve layer'lar artik Engine.ts icerisinde baslangic stiline gomulu.
+    // Bu sinif sadece veri cekip source'a gonderiyor.
     static async init(engine: Engine) {
         this.engine = engine;
         this.map = engine.map;
         if (!this.map) return;
 
-        // Add layers IMMEDIATELY so they are registered before Three.js corrupts the render loop sequence
-        if (!this.map.getSource('izmir-pois')) {
-            this.addMapLibreLayers();
-        }
-
-        // Bütün layer'lari topla
+        // Butun endpoint'lerden veri cek
         const featurePromises = POI_LAYERS.map(async (config) => {
             this.activeLayerIds.add(config.id);
             try {
@@ -63,7 +59,6 @@ export class MapLibreLayerManager {
                             layerName: config.name,
                             color: config.color,
                             recordName: r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor',
-                            // Store the raw record as a JSON string to retrieve it later when clicked
                             recordRaw: JSON.stringify(r)
                         }
                     };
@@ -100,82 +95,9 @@ export class MapLibreLayerManager {
             });
         }
         
-        // CustomEvent at, böylece DistrictManager raw data güncellendiğini anlar
+        // DistrictManager'a bildir
         window.dispatchEvent(new CustomEvent('poiDataUpdated', {
             detail: { features: filteredFeatures }
         }));
-    }
-
-    static addMapLibreLayers() {
-        if (!this.map) return;
-
-        this.map.addSource('izmir-pois', {
-            type: 'geojson',
-            data: { type: 'FeatureCollection', features: [] },
-            cluster: true,
-            clusterMaxZoom: 16, // Max zoom to cluster points on
-            clusterRadius: 50 // Radius of each cluster
-        });
-
-        // Kümeler (Clusters)
-        this.map.addLayer({
-            id: 'clusters',
-            type: 'circle',
-            source: 'izmir-pois',
-            filter: ['has', 'point_count'],
-            paint: {
-                // Point count yoğunluğuna göre renk
-                'circle-color': [
-                    'step',
-                    ['get', 'point_count'],
-                    'rgba(59, 130, 246, 0.8)', // 1-20
-                    20,
-                    'rgba(139, 92, 246, 0.8)', // 20-100
-                    100,
-                    'rgba(236, 72, 153, 0.8)'  // 100+
-                ],
-                'circle-radius': [
-                    'step',
-                    ['get', 'point_count'],
-                    20,  // boyut 20px
-                    20,  
-                    25,  // > 20 ise boyut 25px
-                    100, 
-                    30   // > 100 ise boyut 30px
-                ],
-                'circle-stroke-width': 2,
-                'circle-stroke-color': 'rgba(255, 255, 255, 0.5)'
-            }
-        });
-
-        // Küme içi Sayılar
-        this.map.addLayer({
-            id: 'cluster-count',
-            type: 'symbol',
-            source: 'izmir-pois',
-            filter: ['has', 'point_count'],
-            layout: {
-                'text-field': '{point_count_abbreviated}',
-                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-                'text-size': 14
-            },
-            paint: {
-                'text-color': '#ffffff'
-            }
-        });
-
-        // Tekil Noktalar (Kümelenmemiş)
-        this.map.addLayer({
-            id: 'unclustered-point',
-            type: 'circle',
-            source: 'izmir-pois',
-            filter: ['!', ['has', 'point_count']],
-            paint: {
-                'circle-color': ['coalesce', ['get', 'color'], '#00aaff'],
-                'circle-radius': 10,
-                'circle-stroke-width': 2,
-                'circle-stroke-color': '#ffffff'
-            }
-        });
     }
 }

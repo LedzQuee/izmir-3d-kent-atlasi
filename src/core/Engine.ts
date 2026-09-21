@@ -20,7 +20,6 @@ export class Engine {
         UIManager.init();
 
         this.scene = new THREE.Scene();
-        // PerspectiveCamera — projection matrix MapLibre tarafindan her frame ezilecek
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1e8);
 
         // Isik
@@ -29,7 +28,7 @@ export class Engine {
         dir.position.set(1000, 3000, 1000);
         this.scene.add(dir);
 
-        // Eski canvas varsa gizle, MapLibre kendi canvas'ini olusturacak
+        // Eski canvas varsa gizle
         const oldCanvas = document.querySelector('canvas');
         if (oldCanvas) oldCanvas.style.display = 'none';
 
@@ -55,6 +54,9 @@ export class Engine {
     }
 
     private initMapLibre(container: HTMLDivElement) {
+        // POI source ve layer'larini baslangic stiline gomuyoruz.
+        // Boylece MapLibre'nin kendi cekirdek rendering pipeline'inda cizilirler
+        // ve Three.js custom layer'in WebGL state bozmasindan etkilenmezler.
         const style: any = {
             version: 8,
             glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
@@ -64,11 +66,18 @@ export class Engine {
                     tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
                     tileSize: 256,
                     maxzoom: 19,
-                    attribution: '© Esri'
+                    attribution: '(c) Esri'
                 },
                 'ofm': {
                     type: 'vector',
                     url: 'https://tiles.openfreemap.org/planet'
+                },
+                'izmir-pois': {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] },
+                    cluster: true,
+                    clusterMaxZoom: 16,
+                    clusterRadius: 50
                 }
             },
             layers: [
@@ -90,6 +99,53 @@ export class Engine {
                         'fill-extrusion-opacity': 0.85,
                         'fill-extrusion-vertical-gradient': true
                     }
+                },
+                // --- POI Kumeleri (Clusters) ---
+                {
+                    id: 'clusters',
+                    type: 'circle',
+                    source: 'izmir-pois',
+                    filter: ['has', 'point_count'],
+                    paint: {
+                        'circle-color': [
+                            'step', ['get', 'point_count'],
+                            'rgba(59, 130, 246, 0.85)',
+                            20, 'rgba(139, 92, 246, 0.85)',
+                            100, 'rgba(236, 72, 153, 0.85)'
+                        ],
+                        'circle-radius': [
+                            'step', ['get', 'point_count'],
+                            20, 20, 25, 100, 30
+                        ],
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': 'rgba(255, 255, 255, 0.6)'
+                    }
+                },
+                // --- Kume ici Sayilar ---
+                {
+                    id: 'cluster-count',
+                    type: 'symbol',
+                    source: 'izmir-pois',
+                    filter: ['has', 'point_count'],
+                    layout: {
+                        'text-field': '{point_count_abbreviated}',
+                        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                        'text-size': 14
+                    },
+                    paint: { 'text-color': '#ffffff' }
+                },
+                // --- Tekil Noktalar ---
+                {
+                    id: 'unclustered-point',
+                    type: 'circle',
+                    source: 'izmir-pois',
+                    filter: ['!', ['has', 'point_count']],
+                    paint: {
+                        'circle-color': ['coalesce', ['get', 'color'], '#00aaff'],
+                        'circle-radius': 10,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#ffffff'
+                    }
                 }
             ]
         };
@@ -110,11 +166,8 @@ export class Engine {
         this.map!.on('style.load', () => {
             this.addThreeJSLayer();
             this.setupInteractions();
-            // Three.js layer eklendikten SONRA POI katmanlarinin yuklenmesi icin event at.
-            // Boylece POI katmanlari Three.js ustunde cizilir.
-            setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('threejsLayerReady', { detail: { engine: this } }));
-            }, 0);
+            // POI verilerini yuklemesi icin event at
+            window.dispatchEvent(new CustomEvent('mapReady', { detail: { engine: this } }));
         });
 
         // ESHOT tiklama modunda haritaya tiklayinca en yakin duraklar
@@ -202,12 +255,16 @@ export class Engine {
 
                 engine.scene.traverse((obj: any) => { obj.frustumCulled = false; });
 
+                // Three.js renderindan ONCE WebGL state'ini sifirla
                 engine.renderer.resetState();
                 engine.renderer.clearDepth();
                 engine.renderer.render(engine.scene, engine.camera);
-                // Three.js render'dan sonra WebGL state'ini geri yukle
-                // boylece MapLibre sonraki katmanlari (clusters, unclustered-point) cizebilir
+                // Three.js renderindan SONRA WebGL state'ini tekrar sifirla
+                // boylece MapLibre kendi katmanlarini cizmeye devam edebilir
                 engine.renderer.resetState();
+
+                // Surekli yeniden cizim (Three.js animasyonlari ve DistrictManager icin)
+                engine.map!.triggerRepaint();
             }
         };
         this.map!.addLayer(customLayer);
@@ -250,7 +307,7 @@ export class Engine {
             }
         });
 
-        // MapLibre Küme Tıklama
+        // MapLibre Kume Tiklama
         this.map.on('click', 'clusters', (e: any) => {
             const features = this.map!.queryRenderedFeatures(e.point, { layers: ['clusters'] });
             if (!features.length) return;
@@ -267,13 +324,11 @@ export class Engine {
         this.map.on('mouseenter', 'clusters', () => { this.map!.getCanvas().style.cursor = 'pointer'; });
         this.map.on('mouseleave', 'clusters', () => { this.map!.getCanvas().style.cursor = ''; });
 
-        // MapLibre Tekil Nokta (veya Üst Üste Binen Noktalar) Tıklama
+        // MapLibre Tekil Nokta Tiklama
         this.map.on('click', 'unclustered-point', (e: any) => {
-            // Tıklanan yerdeki TÜM çakışan noktaları al
             const features = this.map!.queryRenderedFeatures(e.point, { layers: ['unclustered-point'] });
             if (!features.length) return;
 
-            // MapLibreLayerManager'dan gelen recordRaw string'ini JSON objesine çevir
             const pois = features.map((f: any) => {
                 return {
                     layerName: f.properties!.layerName,
@@ -282,10 +337,8 @@ export class Engine {
                 };
             });
 
-            // UIManager'e aktar
             UIManager.showMultiInfo(pois);
 
-            // Kamerayı yaklaştır
             const coordinates = (features[0].geometry as any).coordinates.slice();
             this.map!.flyTo({ center: coordinates, zoom: 18, pitch: 60, essential: true, duration: 1500 });
         });
@@ -298,21 +351,14 @@ export class Engine {
         this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         
-        // Cok Kritik Duzeltme: Normalde Three.js PerspectiveCamera icin ray baslangic noktasini 
-        // camera.matrixWorld (bizde 0,0,0) olarak alir. Ancak MapLibre kamerasini kullandigimiz icin 
-        // projectionMatrix'i kendimiz uretiyoruz. Bu yuzden ray baslangicini manuel hesaplamaliyiz!
-        
-        const origin = new THREE.Vector3(this.mouse.x, this.mouse.y, -1); // Near plane
-        const target = new THREE.Vector3(this.mouse.x, this.mouse.y, 1);  // Far plane
+        const origin = new THREE.Vector3(this.mouse.x, this.mouse.y, -1);
+        const target = new THREE.Vector3(this.mouse.x, this.mouse.y, 1);
         
         origin.applyMatrix4(this.camera.projectionMatrixInverse);
         target.applyMatrix4(this.camera.projectionMatrixInverse);
         
         const direction = target.sub(origin).normalize();
         this.raycaster.set(origin, direction);
-        
-        // Sprite'larin raycast yapabilmesi icin raycaster'a kamerayi bildirmemiz zorunlu.
-        // setFromCamera kullanmadigimiz icin bunu manuel set ediyoruz:
         this.raycaster.camera = this.camera;
     }
 

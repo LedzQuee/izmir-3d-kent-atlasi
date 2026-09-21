@@ -27,7 +27,7 @@ import { MapLibreLayerManager, POI_LAYERS } from './layers/MapLibreLayerManager'
 const engine = new Engine();
 (window as any).engineInstance = engine;
 
-// Efsaneyi (Legend) dinamik oluştur
+// Efsaneyi (Legend) dinamik olustur
 const legendItems = [
     { label: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', onToggle: (v: boolean) => {
         UIManager.busStopMode = v;
@@ -51,8 +51,7 @@ POI_LAYERS.forEach(config => {
 
 createLegend(legendItems as any);
 
-// Three.js layer eklendikten sonra (Engine icinden event geliyor)
-// POI katmanlarini yükle — bu sayede kümeler Three.js ustunde görünür
-window.addEventListener('threejsLayerReady', (e: any) => {
+// Engine hazir olunca (style.load tamamlaninca) veri yukle
+window.addEventListener('mapReady', (e: any) => {
     MapLibreLayerManager.init(e.detail.engine);
 }, { once: true });
