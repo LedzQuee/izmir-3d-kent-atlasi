@@ -83,24 +83,10 @@ export class Engine {
             layers: [
                 { id: 'bg', type: 'background', paint: { 'background-color': '#1a1a2e' } },
                 { id: 'satellite', type: 'raster', source: 'esri-satellite', paint: { 'raster-opacity': 1 } },
-                {
-                    id: '3d-buildings',
-                    type: 'fill-extrusion',
-                    source: 'ofm',
-                    'source-layer': 'building',
-                    minzoom: 13,
-                    paint: {
-                        'fill-extrusion-color': [
-                            'interpolate', ['linear'], ['get', 'render_height'],
-                            0, '#e6ded0', 10, '#dcd3c4', 24, '#d2c9ba', 40, '#c7bfb0'
-                        ],
-                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
-                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': 0.85,
-                        'fill-extrusion-vertical-gradient': true
-                    }
-                },
                 // --- POI Kumeleri (Clusters) ---
+                // ONEMLI: fill-extrusion (3D binalar) depth buffer'i aktif eder.
+                // 2D katmanlar (circle, symbol) fill-extrusion'dan SONRA gelirse
+                // depth testine takilip gorunmez olur. Bu yuzden POI'lar ONCE.
                 {
                     id: 'clusters',
                     type: 'circle',
@@ -146,6 +132,25 @@ export class Engine {
                         'circle-stroke-width': 2,
                         'circle-stroke-color': '#ffffff'
                     }
+                },
+                // --- 3D Binalar (fill-extrusion) ---
+                // Depth buffer'i aktif ettigi icin en SONA koyuldu
+                {
+                    id: '3d-buildings',
+                    type: 'fill-extrusion',
+                    source: 'ofm',
+                    'source-layer': 'building',
+                    minzoom: 13,
+                    paint: {
+                        'fill-extrusion-color': [
+                            'interpolate', ['linear'], ['get', 'render_height'],
+                            0, '#e6ded0', 10, '#dcd3c4', 24, '#d2c9ba', 40, '#c7bfb0'
+                        ],
+                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
+                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+                        'fill-extrusion-opacity': 0.85,
+                        'fill-extrusion-vertical-gradient': true
+                    }
                 }
             ]
         };
@@ -166,7 +171,6 @@ export class Engine {
         this.map!.on('style.load', () => {
             this.addThreeJSLayer();
             this.setupInteractions();
-            // POI verilerini yuklemesi icin event at
             window.dispatchEvent(new CustomEvent('mapReady', { detail: { engine: this } }));
         });
 

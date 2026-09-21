@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>MapLibre Circle Test</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>body{margin:0}#map{width:100vw;height:100vh}</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const map = new maplibregl.Map({
+    container: 'map',
+    style: {
+        version: 8,
+        sources: {
+            'test-source': {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: [27.1287, 38.4192] },
+                        properties: { name: 'KONAK TEST' }
+                    }]
+                }
+            }
+        },
+        layers: [
+            { id: 'bg', type: 'background', paint: { 'background-color': '#333' } },
+            {
+                id: 'test-circle',
+                type: 'circle',
+                source: 'test-source',
+                paint: {
+                    'circle-color': '#ff0000',
+                    'circle-radius': 30,
+                    'circle-stroke-width': 5,
+                    'circle-stroke-color': '#ffffff'
+                }
+            }
+        ]
+    },
+    center: [27.1287, 38.4192],
+    zoom: 12
+});
+map.on('load', function() {
+    document.title = 'YUKLENDI - Features: ' + map.queryRenderedFeatures({layers:['test-circle']}).length;
+});
+</script>
+</body>
+</html>
