@@ -255,8 +255,12 @@ export class Engine {
                 if (!isNaN(lat) && !isNaN(lng)) {
                     this.map?.flyTo({ center: [lng, lat], zoom: 16, essential: true });
                 }
-            } else if (obj.type === 'InstancedMesh' && obj.userData?.records) {
-                const r = obj.userData.records[hit.instanceId!];
+            } else if ((obj.isInstancedMesh || obj.type === 'InstancedMesh') && obj.userData?.records) {
+                if (hit.instanceId === undefined) {
+                    UIManager.showToast('HATA: instanceId tanimsiz!', true);
+                    return;
+                }
+                const r = obj.userData.records[hit.instanceId];
                 if (r) {
                     let name = r.ADI || r.Adi || r.adi;
                     if (!name) name = 'Bulunamadi. Keys: ' + Object.keys(r).join(', ');
@@ -266,12 +270,13 @@ export class Engine {
                         <div style="font-size:13px">${name}</div>
                     `, e as MouseEvent);
                     
-                    // Noktaya zoom yap
                     const lat = parseFloat(r.ENLEM || r.enlem);
                     const lng = parseFloat(r.BOYLAM || r.boylam);
                     if (!isNaN(lat) && !isNaN(lng)) {
                         this.map?.flyTo({ center: [lng, lat], zoom: 16, essential: true });
                     }
+                } else {
+                    UIManager.showToast('HATA: Kayit bulunamadi. InstanceID: ' + hit.instanceId, true);
                 }
             }
         });

@@ -11,31 +11,24 @@ export async function loadAfetToplanmaAlanlari(scene: THREE.Object3D) {
     const geometry = new THREE.SphereGeometry(15, 8, 8);
     const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
-    const instancedMesh = new THREE.InstancedMesh(geometry, material, records.length);
-    const dummy = new THREE.Object3D();
-    const validRecords: any[] = [];
-
     let validCount = 0;
     records.forEach((record: any) => {
       const lat = parseFloat(record.ENLEM || record.enlem);
       const lng = parseFloat(record.BOYLAM || record.boylam);
       if (!isNaN(lat) && !isNaN(lng)) {
         const [x, y, z] = convertGpsToVector(lat, lng);
-        dummy.position.set(x, y, z);
-        dummy.updateMatrix();
-        instancedMesh.setMatrixAt(validCount, dummy.matrix);
-        validRecords.push(record); // Her instance'in verisini sirasiyla sakliyoruz
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(x, y, z);
+        mesh.userData = { record, layerName: 'Afet Toplanma Alanı' };
+        scene.add(mesh);
         validCount++;
       }
     });
 
-    (instancedMesh as any).instanceCount = validCount;
-    instancedMesh.instanceMatrix.needsUpdate = true;
-    instancedMesh.computeBoundingSphere();
-    // Veriyi InstancedMesh icine gomuyoruz
-    instancedMesh.userData = { records: validRecords, layerName: 'Afet Toplanma Alanı' };
-    scene.add(instancedMesh);
-  } catch (error) {}
+    console.log(`Afet Toplanma Alanı: ${validCount} nokta yüklendi.`);
+  } catch (error) {
+    console.error("Afet Toplanma Alanı yüklenemedi", error);
+  }
 }
 
 
