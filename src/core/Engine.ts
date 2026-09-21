@@ -258,9 +258,12 @@ export class Engine {
             } else if (obj.type === 'InstancedMesh' && obj.userData?.records) {
                 const r = obj.userData.records[hit.instanceId!];
                 if (r) {
+                    let name = r.ADI || r.Adi || r.adi;
+                    if (!name) name = 'Bulunamadi. Keys: ' + Object.keys(r).join(', ');
+                    
                     UIManager.showInfo(`
                         <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
-                        <div style="font-size:13px">${r.ADI || r.Adi || r.adi || 'Bilinmiyor'}</div>
+                        <div style="font-size:13px">${name}</div>
                     `, e as MouseEvent);
                     
                     // Noktaya zoom yap
