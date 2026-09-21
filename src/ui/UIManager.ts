@@ -108,6 +108,7 @@ export class UIManager {
         this.infoBox.style.right = 'auto';
         this.infoBox.style.transform = 'translateX(-50%)';
         this.infoBox.style.minWidth = 'unset';
+        this.infoBox.style.maxWidth = 'none'; // Taşmayı engellemek için max-width'i kaldır
         this.infoBox.style.whiteSpace = 'nowrap'; // Yazıyı tek satırda tut
         this.infoBox.style.padding = '12px 24px';
         this.infoBox.style.borderRadius = '30px'; // Hap şeklinde
