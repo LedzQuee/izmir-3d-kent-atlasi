@@ -73,6 +73,7 @@ export class MapLibreLayerManager {
 
         const featureArrays = await Promise.all(featurePromises);
         this.allFeatures = featureArrays.flat();
+        (window as any).allMapLibreFeatures = this.allFeatures;
 
         this.updateData();
     }

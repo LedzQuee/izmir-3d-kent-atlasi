@@ -1,7 +1,8 @@
-// @ts-nocheck
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { UIManager } from './ui/UIManager';
 import { clearNearestStops } from './layers/OtobusDuraklariLayer';
+
+(window as any).UIManager = UIManager;
 
 window.addEventListener('error', function(event) {
     const errorDiv = document.createElement('div');

@@ -1,4 +1,4 @@
-﻿
+
 export function createLegend(items: { label: string, color: string, onToggle: (checked: boolean) => void }[]) {
   // Eger eski kutucuklu id'ler kaldiysa onlari sil
   const existing1 = document.getElementById('map-legend');
@@ -36,9 +36,81 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
 
   const content = document.createElement('div');
   content.style.transition = "max-height 0.3s ease, opacity 0.3s ease";
-  content.style.overflow = "hidden";
+  content.style.overflow = "hidden"; // max-height transition icin lazim, sonuclarda sorun yaratmamasi icin listeyi iceride tutacagiz
   content.style.maxHeight = "600px"; 
   content.style.opacity = "1";
+
+  // Arama Kutusu
+  const searchContainer = document.createElement('div');
+  searchContainer.style.cssText = 'position: relative; margin-bottom: 12px;';
+  
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = 'Nokta/Mekan Ara...';
+  searchInput.style.cssText = 'width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 4px; border: 1px solid #555; background: #222; color: white; outline: none; font-size: 12px; margin-bottom: 2px;';
+  
+  const searchResults = document.createElement('div');
+  searchResults.style.cssText = 'position: absolute; top: 100%; left: 0; right: 0; background: #2a2a35; border: 1px solid #555; border-radius: 4px; max-height: 200px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5);';
+  
+  searchContainer.appendChild(searchInput);
+  searchContainer.appendChild(searchResults);
+  content.appendChild(searchContainer);
+
+  let searchTimeout: any;
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    const query = (e.target as HTMLInputElement).value.toLowerCase().trim();
+    if (query.length < 2) {
+      searchResults.style.display = 'none';
+      return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+      // @ts-ignore
+      const allFeatures = window.allMapLibreFeatures || [];
+      const matches = allFeatures.filter((f: any) => f.properties.recordName.toLowerCase().includes(query)).slice(0, 15);
+      
+      searchResults.innerHTML = '';
+      if (matches.length > 0) {
+        matches.forEach((f: any) => {
+          const div = document.createElement('div');
+          div.style.cssText = 'padding: 8px 10px; border-bottom: 1px solid #444; cursor: pointer; font-size: 12px; color: #ddd;';
+          div.innerHTML = `<span style="color:${f.properties.color}">\u2022</span> ${f.properties.recordName}`;
+          div.onmouseenter = () => div.style.background = '#3a3a45';
+          div.onmouseleave = () => div.style.background = 'transparent';
+          div.onclick = () => {
+             searchResults.style.display = 'none';
+             searchInput.value = '';
+             // Fly to location
+             const coords = f.geometry.coordinates;
+             // @ts-ignore
+             window.engineInstance?.map?.flyTo({ center: coords, zoom: 18, pitch: 60 });
+             // Show info
+             // @ts-ignore
+             if (window.UIManager) {
+                 // @ts-ignore
+                 window.UIManager.showMultiInfo([{
+                     layerName: f.properties.layerName,
+                     color: f.properties.color,
+                     record: JSON.parse(f.properties.recordRaw)
+                 }]);
+             }
+          };
+          searchResults.appendChild(div);
+        });
+        searchResults.style.display = 'block';
+      } else {
+        searchResults.style.display = 'none';
+      }
+    }, 300);
+  });
+
+  // Disari tiklaninca arama sonuclarini gizle
+  document.addEventListener('click', (e) => {
+      if (!searchContainer.contains(e.target as Node)) {
+          searchResults.style.display = 'none';
+      }
+  });
 
   // Hepsini Gizle / Goster Butonu
   const topControls = document.createElement('div');
