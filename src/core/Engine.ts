@@ -277,7 +277,19 @@ export class Engine {
     private updateMouseRay(e: PointerEvent) {
         this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        this.raycaster.setFromCamera(this.mouse, this.camera);
+        
+        // Cok Kritik Duzeltme: Normalde Three.js PerspectiveCamera icin ray baslangic noktasini 
+        // camera.matrixWorld (bizde 0,0,0) olarak alir. Ancak MapLibre kamerasini kullandigimiz icin 
+        // projectionMatrix'i kendimiz uretiyoruz. Bu yuzden ray baslangicini manuel hesaplamaliyiz!
+        
+        const origin = new THREE.Vector3(this.mouse.x, this.mouse.y, -1); // Near plane
+        const target = new THREE.Vector3(this.mouse.x, this.mouse.y, 1);  // Far plane
+        
+        origin.applyMatrix4(this.camera.projectionMatrixInverse);
+        target.applyMatrix4(this.camera.projectionMatrixInverse);
+        
+        const direction = target.sub(origin).normalize();
+        this.raycaster.set(origin, direction);
     }
 
     private getInteractableObjects(): THREE.Object3D[] {
