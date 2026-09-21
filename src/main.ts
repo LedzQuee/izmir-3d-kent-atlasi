@@ -50,11 +50,3 @@ POI_LAYERS.forEach(config => {
 });
 
 createLegend(legendItems as any);
-
-if (engine.map?.isStyleLoaded()) {
-    MapLibreLayerManager.init(engine);
-} else {
-    engine.map?.on('style.load', () => {
-        MapLibreLayerManager.init(engine);
-    });
-}

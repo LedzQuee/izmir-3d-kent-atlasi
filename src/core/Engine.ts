@@ -110,6 +110,13 @@ export class Engine {
         this.map!.on('style.load', () => {
             this.addThreeJSLayer();
             this.setupInteractions();
+            // POI katmanlarini Three.js layer'dan SONRA ekle — boylece onun ustunde cizilirler
+            // setTimeout 0 ile bir microtask sonrasina birakiyoruz
+            // (Three.js layer'in addLayer'i tamamlamasi icin)
+            setTimeout(() => {
+                const { MapLibreLayerManager } = require('../layers/MapLibreLayerManager');
+                MapLibreLayerManager.init(this as any);
+            }, 0);
         });
 
         // ESHOT tiklama modunda haritaya tiklayinca en yakin duraklar
@@ -198,14 +205,8 @@ export class Engine {
                 engine.scene.traverse((obj: any) => { obj.frustumCulled = false; });
 
                 engine.renderer.resetState();
-                
-                // Cok onemli: MapLibre depth buffer'i doldurdugu icin Three.js objeleri
-                // yer yuzeyinin altinda kalmis gibi gorunebilir (Depth Test).
-                // Ekrana cizilip cizilmediklerini kesin gormek icin depth'i temizliyoruz.
                 engine.renderer.clearDepth();
-                
                 engine.renderer.render(engine.scene, engine.camera);
-                engine.map!.triggerRepaint();
             }
         };
         this.map!.addLayer(customLayer);
