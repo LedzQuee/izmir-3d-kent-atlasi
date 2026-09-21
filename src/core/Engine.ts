@@ -56,28 +56,27 @@ export class Engine {
         });
     }
 
-    public start() { /* MapLibre event loop ile yonetiliyor */ }
-
     private initMapLibre(container: HTMLDivElement) {
-        const style = {
+        const style: any = {
             version: 8,
             sources: {
+                'esri-satellite': {
+                    type: 'raster',
+                    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                    tileSize: 256,
+                    maxzoom: 19,
+                    attribution: '© Esri'
+                },
                 'ofm': {
                     type: 'vector',
-                    tiles: ['https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf'],
-                    maxzoom: 14
+                    url: 'https://tiles.openfreemap.org/planet'
                 }
             },
             layers: [
+                { id: 'bg', type: 'background', paint: { 'background-color': '#1a1a2e' } },
+                { id: 'satellite', type: 'raster', source: 'esri-satellite', paint: { 'raster-opacity': 1 } },
                 {
-                    id: 'background',
-                    type: 'background',
-                    paint: {
-                        'background-color': '#1a1a1a' // Koyu gri arkaplan
-                    }
-                },
-                {
-                    id: 'building',
+                    id: '3d-buildings',
                     type: 'fill-extrusion',
                     source: 'ofm',
                     'source-layer': 'building',
@@ -85,7 +84,7 @@ export class Engine {
                     paint: {
                         'fill-extrusion-color': [
                             'interpolate', ['linear'], ['get', 'render_height'],
-                            0, '#333333', 10, '#444444', 24, '#555555', 40, '#666666'
+                            0, '#e6ded0', 10, '#dcd3c4', 24, '#d2c9ba', 40, '#c7bfb0'
                         ],
                         'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
                         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
