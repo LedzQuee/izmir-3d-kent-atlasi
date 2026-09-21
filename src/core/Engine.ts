@@ -179,7 +179,11 @@ export class Engine {
                 engine.camera.projectionMatrix = m.multiply(l);
                 
                 engine.renderer.state.reset();
+                const oldY = engine.camera.position.y;
+                engine.camera.position.set(0,0,0);
+                engine.camera.updateMatrixWorld();
                 engine.renderer.render(engine.scene, engine.camera);
+                engine.camera.position.y = oldY;
                 engine.map!.triggerRepaint();
             }
         };
