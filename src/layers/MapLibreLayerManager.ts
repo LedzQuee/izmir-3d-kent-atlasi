@@ -53,6 +53,10 @@ export class MapLibreLayerManager {
                     const lng = parseFloat(r.BOYLAM || r.boylam);
                     if (isNaN(lat) || isNaN(lng)) return null;
 
+                    const baseName = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
+                    const ilce = r.ILCE || r.Ilce || r.ilce;
+                    const finalName = ilce ? `${baseName} (${ilce})` : baseName;
+
                     return {
                         type: 'Feature',
                         geometry: { type: 'Point', coordinates: [lng, lat] },
@@ -60,7 +64,7 @@ export class MapLibreLayerManager {
                             layerId: config.id,
                             layerName: config.name,
                             color: config.color,
-                            recordName: r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor',
+                            recordName: finalName,
                             recordRaw: JSON.stringify(r)
                         }
                     };

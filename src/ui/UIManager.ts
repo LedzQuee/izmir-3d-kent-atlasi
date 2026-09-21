@@ -112,7 +112,11 @@ export class UIManager {
         if (!poi) return;
         
         const r = poi.record;
-        const name = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
+        let name = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
+        const ilce = r.ILCE || r.Ilce || r.ilce;
+        if (ilce) {
+            name = `${name} (${ilce})`;
+        }
         
         let html = `
             <div style="display:flex; align-items:center; gap: 12px;">

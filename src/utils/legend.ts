@@ -9,7 +9,7 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
   const legend = document.createElement('div');
   legend.id = 'map-legend';
   legend.style.cssText = `
-    position: fixed; top: 20px; left: 20px;
+    position: fixed; top: 20px; right: 20px;
     background: rgba(0, 0, 0, 0.85);
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 10px; padding: 15px;
