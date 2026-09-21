@@ -110,12 +110,10 @@ export class Engine {
         this.map!.on('style.load', () => {
             this.addThreeJSLayer();
             this.setupInteractions();
-            // POI katmanlarini Three.js layer'dan SONRA ekle — boylece onun ustunde cizilirler
-            // setTimeout 0 ile bir microtask sonrasina birakiyoruz
-            // (Three.js layer'in addLayer'i tamamlamasi icin)
+            // Three.js layer eklendikten SONRA POI katmanlarinin yuklenmesi icin event at.
+            // Boylece POI katmanlari Three.js ustunde cizilir.
             setTimeout(() => {
-                const { MapLibreLayerManager } = require('../layers/MapLibreLayerManager');
-                MapLibreLayerManager.init(this as any);
+                window.dispatchEvent(new CustomEvent('threejsLayerReady', { detail: { engine: this } }));
             }, 0);
         });
 

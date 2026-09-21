@@ -50,3 +50,9 @@ POI_LAYERS.forEach(config => {
 });
 
 createLegend(legendItems as any);
+
+// Three.js layer eklendikten sonra (Engine icinden event geliyor)
+// POI katmanlarini yükle — bu sayede kümeler Three.js ustunde görünür
+window.addEventListener('threejsLayerReady', (e: any) => {
+    MapLibreLayerManager.init(e.detail.engine);
+}, { once: true });
