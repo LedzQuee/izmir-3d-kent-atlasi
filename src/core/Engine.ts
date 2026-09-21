@@ -205,6 +205,9 @@ export class Engine {
                 engine.renderer.resetState();
                 engine.renderer.clearDepth();
                 engine.renderer.render(engine.scene, engine.camera);
+                // Three.js render'dan sonra WebGL state'ini geri yukle
+                // boylece MapLibre sonraki katmanlari (clusters, unclustered-point) cizebilir
+                engine.renderer.resetState();
             }
         };
         this.map!.addLayer(customLayer);
