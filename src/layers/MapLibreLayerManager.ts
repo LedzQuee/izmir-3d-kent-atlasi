@@ -1,6 +1,7 @@
 import { ApiService } from '../api/ApiService';
 import * as maplibregl from 'maplibre-gl';
 import { Engine } from '../core/Engine';
+import { HTMLMarkerManager } from './HTMLMarkerManager';
 
 export interface LayerConfig {
     id: string;
@@ -31,13 +32,14 @@ export class MapLibreLayerManager {
     static allFeatures: any[] = [];
     static map: maplibregl.Map | null = null;
     static engine: Engine | null = null;
+    static markerManager: HTMLMarkerManager | null = null;
 
-    // Source ve layer'lar artik Engine.ts icerisinde baslangic stiline gomulu.
-    // Bu sinif sadece veri cekip source'a gonderiyor.
     static async init(engine: Engine) {
         this.engine = engine;
         this.map = engine.map;
         if (!this.map) return;
+        
+        this.markerManager = new HTMLMarkerManager(engine);
 
         // Butun endpoint'lerden veri cek
         const featurePromises = POI_LAYERS.map(async (config) => {
@@ -83,16 +85,12 @@ export class MapLibreLayerManager {
 
     static updateData() {
         if (!this.map) return;
-        const source = this.map.getSource('izmir-pois') as maplibregl.GeoJSONSource;
         
         // Sadece aktif olan layerId'lere ait verileri filtrele
         const filteredFeatures = this.allFeatures.filter(f => this.activeLayerIds.has(f.properties.layerId));
         
-        if (source) {
-            source.setData({
-                type: 'FeatureCollection',
-                features: filteredFeatures
-            });
+        if (this.markerManager) {
+            this.markerManager.updateData(filteredFeatures);
         }
         
         // DistrictManager'a bildir

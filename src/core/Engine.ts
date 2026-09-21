@@ -71,70 +71,11 @@ export class Engine {
                 'ofm': {
                     type: 'vector',
                     url: 'https://tiles.openfreemap.org/planet'
-                },
-                'izmir-pois': {
-                    type: 'geojson',
-                    data: { type: 'FeatureCollection', features: [] },
-                    cluster: true,
-                    clusterMaxZoom: 16,
-                    clusterRadius: 50
                 }
             },
             layers: [
                 { id: 'bg', type: 'background', paint: { 'background-color': '#1a1a2e' } },
                 { id: 'satellite', type: 'raster', source: 'esri-satellite', paint: { 'raster-opacity': 1 } },
-                // --- POI Kumeleri (Clusters) ---
-                // ONEMLI: fill-extrusion (3D binalar) depth buffer'i aktif eder.
-                // 2D katmanlar (circle, symbol) fill-extrusion'dan SONRA gelirse
-                // depth testine takilip gorunmez olur. Bu yuzden POI'lar ONCE.
-                {
-                    id: 'clusters',
-                    type: 'circle',
-                    source: 'izmir-pois',
-                    filter: ['has', 'point_count'],
-                    paint: {
-                        'circle-color': [
-                            'step', ['get', 'point_count'],
-                            'rgba(59, 130, 246, 0.85)',
-                            20, 'rgba(139, 92, 246, 0.85)',
-                            100, 'rgba(236, 72, 153, 0.85)'
-                        ],
-                        'circle-radius': [
-                            'step', ['get', 'point_count'],
-                            20, 20, 25, 100, 30
-                        ],
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': 'rgba(255, 255, 255, 0.6)'
-                    }
-                },
-                // --- Kume ici Sayilar ---
-                {
-                    id: 'cluster-count',
-                    type: 'symbol',
-                    source: 'izmir-pois',
-                    filter: ['has', 'point_count'],
-                    layout: {
-                        'text-field': '{point_count_abbreviated}',
-                        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-                        'text-size': 14
-                    },
-                    paint: { 'text-color': '#ffffff' }
-                },
-                // --- Tekil Noktalar ---
-                {
-                    id: 'unclustered-point',
-                    type: 'circle',
-                    source: 'izmir-pois',
-                    filter: ['!', ['has', 'point_count']],
-                    paint: {
-                        'circle-color': ['coalesce', ['get', 'color'], '#00aaff'],
-                        'circle-radius': 10,
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#ffffff'
-                    }
-                },
-                // --- 3D Binalar (fill-extrusion) ---
-                // Depth buffer'i aktif ettigi icin en SONA koyuldu
                 {
                     id: '3d-buildings',
                     type: 'fill-extrusion',
@@ -310,45 +251,6 @@ export class Engine {
                 }));
             }
         });
-
-        // MapLibre Kume Tiklama
-        this.map.on('click', 'clusters', (e: any) => {
-            const features = this.map!.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-            if (!features.length) return;
-            const clusterId = features[0].properties!.cluster_id;
-            const source = this.map!.getSource('izmir-pois') as maplibregl.GeoJSONSource;
-            source.getClusterExpansionZoom(clusterId).then((zoom) => {
-                this.map!.flyTo({
-                    center: (features[0].geometry as any).coordinates,
-                    zoom: zoom
-                });
-            });
-        });
-
-        this.map.on('mouseenter', 'clusters', () => { this.map!.getCanvas().style.cursor = 'pointer'; });
-        this.map.on('mouseleave', 'clusters', () => { this.map!.getCanvas().style.cursor = ''; });
-
-        // MapLibre Tekil Nokta Tiklama
-        this.map.on('click', 'unclustered-point', (e: any) => {
-            const features = this.map!.queryRenderedFeatures(e.point, { layers: ['unclustered-point'] });
-            if (!features.length) return;
-
-            const pois = features.map((f: any) => {
-                return {
-                    layerName: f.properties!.layerName,
-                    color: f.properties!.color,
-                    record: JSON.parse(f.properties!.recordRaw)
-                };
-            });
-
-            UIManager.showMultiInfo(pois);
-
-            const coordinates = (features[0].geometry as any).coordinates.slice();
-            this.map!.flyTo({ center: coordinates, zoom: 18, pitch: 60, essential: true, duration: 1500 });
-        });
-
-        this.map.on('mouseenter', 'unclustered-point', () => { this.map!.getCanvas().style.cursor = 'pointer'; });
-        this.map.on('mouseleave', 'unclustered-point', () => { this.map!.getCanvas().style.cursor = ''; });
     }
 
     private updateMouseRay(e: PointerEvent) {
