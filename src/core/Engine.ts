@@ -133,20 +133,10 @@ export class Engine {
 
         const merc = maplibregl.MercatorCoordinate.fromLngLat(origin, 0);
         const scale = merc.meterInMercatorCoordinateUnits();
-        const mz = (merc as any).z ?? 0;
 
-        // Dogru eksen donusumu:
-        // Three.js: X=dogu(m), Y=yukari(m), Z=guney(m)
-        // Mercator : X=dogu,   Y=guney,     Z=yukari
-        // Yani: MercX = ThreeX*s, MercY = ThreeZ*s, MercZ = ThreeY*s
-        // Matris (satir-major): [row0, row1, row2, row3]
-        const modelMatrix = new THREE.Matrix4();
-        modelMatrix.set(
-            scale, 0,     0,     merc.x,
-            0,     0,     scale, merc.y,
-            0,     scale, 0,     mz,
-            0,     0,     0,     1
-        );
+        console.log('[Engine] MapLibre Custom Layer ekleniyor...');
+        console.log('[Engine] Mercator origin:', merc.x, merc.y, (merc as any).z);
+        console.log('[Engine] Scale (1 metre = mercator):', scale);
 
         const customLayer: maplibregl.CustomLayerInterface = {
             id: 'three-js-layer',
@@ -160,14 +150,55 @@ export class Engine {
                     antialias: true
                 });
                 engine.renderer.autoClear = false;
+                console.log('[Engine] Three.js renderer olusturuldu');
             },
 
-            render(_gl: any, matrix: any) {
+            render(_gl: any, args: any) {
                 if (!engine.renderer) return;
 
-                // viewProjection * modelMatrix
-                const vp = new THREE.Matrix4().fromArray(matrix);
-                engine.camera.projectionMatrix = vp.multiply(modelMatrix);
+                // MapLibre v4+ bazen args bir obje olarak gelir (args.defaultProjectionData.mainMatrix),
+                // bazen dogrudan number[] olarak gelir. Ikisini de destekleyelim.
+                let matrixArray: number[];
+                if (Array.isArray(args)) {
+                    matrixArray = args;
+                } else if (args && args.defaultProjectionData && args.defaultProjectionData.mainMatrix) {
+                    matrixArray = args.defaultProjectionData.mainMatrix;
+                } else if (args && args.projectionMatrix) {
+                    matrixArray = args.projectionMatrix;
+                } else {
+                    // Eski maplibre API: ikinci parametre dogrudan Float64Array
+                    matrixArray = Array.from(args);
+                }
+
+                const vp = new THREE.Matrix4().fromArray(matrixArray);
+
+                // Model matrisi: Three.js metre koordinatlarini Mercator'a donustur
+                // Three.js: X=dogu(m), Y=yukari(m), Z=-guney(m)  (coordinates.ts'de z = -(lat-center)*...)
+                // Mercator: X=dogu, Y=guney, Z=yukari (sol-el sistemi, Y asagi)
+                //
+                // convertGpsToVector donusu:
+                //   x = (lng - center.lng) * METERS_PER_LNG  -> dogu yonde metre
+                //   z = -(lat - center.lat) * METERS_PER_LAT -> kuzey pozitif mi negatif mi?
+                //     lat > center => z negatif (kuzeye giden negatif)
+                //   y = 15 (yukseklik)
+                //
+                // Mercator'da:
+                //   x artarsa doguya gider     -> ThreeX * scale
+                //   y artarsa guneye gider     -> -ThreeZ * scale  (cunku z zaten ters)
+                //   z artarsa yukariya gider   -> ThreeY * scale (negatif cunku mercator z asagi)
+
+                const modelMatrix = new THREE.Matrix4();
+                // Column-major (Three.js default)
+                // col0          col1          col2          col3
+                modelMatrix.set(
+                    scale,  0,      0,      merc.x,   // col0: ThreeX -> MercX
+                    0,      0,     -scale,  merc.y,   // col1: ThreeZ (negatif) -> MercY 
+                    0,      scale,  0,      (merc as any).z ?? 0,  // col2: ThreeY -> MercZ
+                    0,      0,      0,      1
+                );
+
+                engine.camera.projectionMatrix = vp.clone().multiply(modelMatrix);
+                engine.camera.projectionMatrixInverse.copy(engine.camera.projectionMatrix).invert();
                 engine.camera.matrixWorldInverse.identity();
                 engine.camera.matrixWorld.identity();
 
@@ -180,6 +211,19 @@ export class Engine {
         };
 
         this.map!.addLayer(customLayer);
+
+        // Debug: 3 saniye sonra sahne icerigini logla
+        setTimeout(() => {
+            let meshCount = 0;
+            engine.scene.traverse((obj: any) => {
+                if (obj.type === 'Mesh' || obj.type === 'InstancedMesh' || obj.type === 'Sprite') meshCount++;
+            });
+            console.log('[Engine] Sahnedeki toplam mesh/sprite sayisi:', meshCount);
+            console.log('[Engine] Sahne children sayisi:', engine.scene.children.length);
+            engine.scene.children.forEach((c: any) => {
+                console.log('  -', c.type, c.name || '', 'visible:', c.visible, 'children:', c.children?.length);
+            });
+        }, 5000);
     }
 
     private setupInteractions() {
