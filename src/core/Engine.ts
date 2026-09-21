@@ -176,15 +176,21 @@ export class Engine {
                 );
                 l.multiply(axisSwap);
 
-                engine.camera.projectionMatrix = m.multiply(l);
                 
-                engine.renderer.state.reset();
-                const oldY = engine.camera.position.y;
+                engine.scene.traverse((obj: any) => { obj.frustumCulled = false; }); // Frustum culling kapat (Garantili gorunurluk)
+                
+                engine.scene.matrixAutoUpdate = false;
+                engine.scene.matrix = l; // Model transformunu direkt sahneye uygula
+                
                 engine.camera.position.set(0,0,0);
-                engine.camera.updateMatrixWorld();
+                engine.camera.quaternion.set(0,0,0,1);
+                engine.camera.updateMatrixWorld(true);
+                
+                engine.camera.projectionMatrix = m; // Saf MapLibre kamerasi
+                
                 engine.renderer.render(engine.scene, engine.camera);
-                engine.camera.position.y = oldY;
                 engine.map!.triggerRepaint();
+
             }
         };
 

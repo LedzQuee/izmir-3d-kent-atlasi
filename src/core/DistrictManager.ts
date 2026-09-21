@@ -82,7 +82,7 @@ export class DistrictManager {
         const altitude = this.camera.position.y;
         const SHOW_POINTS_THRESHOLD = 1800; // Yere 1800 birimden fazla yaklasinca veriler belirir
 
-        const shouldShowPoints = altitude < SHOW_POINTS_THRESHOLD;
+        const shouldShowPoints = true; // LOD disabled temporarily
         if (this.pointsVisibleForLOD !== shouldShowPoints) {
             this.pointsVisibleForLOD = shouldShowPoints;
             this.setAllOriginalsVisible(shouldShowPoints);
@@ -202,7 +202,7 @@ export class DistrictManager {
             if (count === 0) return; // Sifirsa rozet cizme
             
             const [x, y, z] = convertGpsToVector(d.lat, d.lng);
-            const targetData = { isDistrict: true, name: d.name, count: count, targetX: x, targetZ: z };
+            const targetData = { isDistrict: true, name: d.name, count: count, targetX: x, targetZ: z, lat: d.lat, lng: d.lng };
 
             // TERTEMİZ, GÖLGESİZ, KURUMSAL BEYAZ KAPSÜL (Sıfır Neon)
             const label = `${d.name}  ${count}`;
@@ -370,7 +370,7 @@ export class DistrictManager {
                 const target = this.districtsData.find(d => d.name === name);
                 if (target) {
                     const [x, y, z] = convertGpsToVector(target.lat, target.lng);
-                    window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { x, z } }));
+                    window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { x, z, lat: target.lat, lng: target.lng } }));
                 }
             };
 
@@ -389,3 +389,4 @@ export class DistrictManager {
     }
 
 }
+

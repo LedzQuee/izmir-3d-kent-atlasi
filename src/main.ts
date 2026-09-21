@@ -73,7 +73,7 @@ loadAfetToplanmaAlanlari(groups.afet);
 
 createLegend([
 
-    { name: 'Yakn Otobs Duraklar (Haritaya Tklayn)', color: '#00ffaa', onToggle: v => {
+    { name: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', onToggle: v => {
         UIManager.busStopMode = v;
         // Kapatildiginda ekrandaki (varsa) otobus duraklarini sil
         if(!v && window.engineInstance) { 
