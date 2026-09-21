@@ -16,7 +16,7 @@ export class Engine {
     constructor(canvas: HTMLCanvasElement) {
         UIManager.init();
         this.scene = new THREE.Scene();
-        this.camera = new THREE.Camera(); // MapLibre layer'da projection matrix ile ezilecek
+        this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 100000); // MapLibre layer'da projection matrix ile ezilecek
         
         // Aydinlatma
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
