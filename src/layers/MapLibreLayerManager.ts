@@ -1,6 +1,7 @@
 import { ApiService } from '../api/ApiService';
 import * as maplibregl from 'maplibre-gl';
 import { Engine } from '../core/Engine';
+import { UIManager } from '../ui/UIManager';
 
 export interface LayerConfig {
     id: string;
