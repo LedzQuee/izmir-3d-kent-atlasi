@@ -29,7 +29,7 @@ export async function loadAfetToplanmaAlanlari(scene: THREE.Object3D) {
       }
     });
 
-    instancedMesh.instanceCount = validCount;
+    (instancedMesh as any).instanceCount = validCount;
     instancedMesh.instanceMatrix.needsUpdate = true;
     instancedMesh.computeBoundingSphere();
     // Veriyi InstancedMesh icine gomuyoruz

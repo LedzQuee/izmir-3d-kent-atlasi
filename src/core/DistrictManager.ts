@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { convertGpsToVector } from '../utils/coordinates';
 
 export class DistrictManager {
@@ -292,101 +292,105 @@ export class DistrictManager {
         const container = document.createElement('div');
         container.id = 'district-right-sidebar';
         container.style.cssText = `
-            position: fixed; right: 0; top: 15%;
-            width: 50px; max-height: 80vh; height: 600px;
-            background: rgba(20, 25, 30, 0.4); backdrop-filter: blur(8px);
-            border-radius: 15px 0 0 15px; border: 1px solid rgba(255,255,255,0.1);
-            border-right: none; box-shadow: -5px 5px 20px rgba(0,0,0,0.3);
-            color: white; font-family: "Segoe UI", Roboto, sans-serif;
-            z-index: 100; overflow: hidden; 
-            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-            display: flex; flex-direction: column;
+            position: fixed;
+            right: -300px;
+            top: 80px;
+            width: 300px;
+            height: calc(100vh - 160px);
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-right: none;
+            border-radius: 16px 0 0 16px;
+            color: #f1f5f9;
+            font-family: "Segoe UI", Roboto, sans-serif;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -8px 0 32px rgba(0,0,0,0.5);
         `;
 
-        // Kapaliyken Gorunen Ikon (Istatistik/Siralama)
-        const iconDiv = document.createElement('div');
-        iconDiv.innerHTML = ' ≡ '; 
-        iconDiv.style.cssText = `
-            position: absolute; right: 0; top: 0;
-            width: 50px; height: 50px; display: flex;
-            align-items: center; justify-content: center; font-size: 22px;
-            cursor: pointer; opacity: 1; transition: 0.3s;
+        const toggleBtn = document.createElement('button');
+        toggleBtn.style.cssText = `
+            position: absolute;
+            left: -44px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 64px;
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-right: none;
+            border-radius: 14px 0 0 14px;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 22px;
+            line-height: 1;
+            transition: all 0.2s ease;
+            box-shadow: -4px 0 16px rgba(0,0,0,0.4);
         `;
-        container.appendChild(iconDiv);
+        toggleBtn.innerHTML = '&#8249;';
+        toggleBtn.onmouseenter = () => { toggleBtn.style.color = '#fff'; toggleBtn.style.background = 'rgba(30, 41, 59, 0.95)'; };
+        toggleBtn.onmouseleave = () => { toggleBtn.style.color = '#94a3b8'; toggleBtn.style.background = 'rgba(10, 14, 26, 0.85)'; };
 
-        const content = document.createElement('div');
-        content.id = 'district-list-content';
-        content.style.cssText = `
-            width: 280px; opacity: 0; transition: opacity 0.3s, transform 0.4s;
-            padding: 20px; pointer-events: none; overflow-y: auto; height: 100%;
-            transform: translateX(20px); box-sizing: border-box; display: flex; flex-direction: column;
-        `;
-        
-        content.innerHTML = `<style>
-            #district-list-content::-webkit-scrollbar { width: 5px; }
-            #district-list-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 5px; }
-        </style>
-        <h3 style="margin: 0 0 15px 0; color: #ff9900; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">İlçe Veri Sıralaması</h3>
-        <div id="district-rows" style="flex: 1; overflow-y: auto; padding-right: 5px;"></div>
-        `;
+        let open = false;
+        toggleBtn.onclick = () => {
+            open = !open;
+            container.style.right = open ? '0' : '-300px';
+            toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+        };
+        container.appendChild(toggleBtn);
 
-        container.appendChild(content);
+        const header = document.createElement('div');
+        header.style.cssText = `padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;`;
+        header.innerHTML = `
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#64748b;text-transform:uppercase;margin-bottom:4px">Veri Dagılımı</div>
+            <div style="font-size:17px;font-weight:700;color:#f1f5f9">Ilce Sıralaması</div>
+        `;
+        container.appendChild(header);
+
+        const listArea = document.createElement('div');
+        listArea.id = 'district-rows';
+        listArea.style.cssText = `flex:1;overflow-y:auto;padding:10px 14px;`;
+        listArea.innerHTML = `<style>#district-rows::-webkit-scrollbar{width:4px}#district-rows::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:4px}</style>`;
+        container.appendChild(listArea);
         document.body.appendChild(container);
-
-        // Hover (Uzerine Gelme) Animasyonlari
-        container.onmouseenter = () => {
-            container.style.width = '280px';
-            container.style.background = 'rgba(20, 25, 30, 0.85)';
-            iconDiv.style.opacity = '0';
-            content.style.opacity = '1';
-            content.style.pointerEvents = 'auto';
-            content.style.transform = 'translateX(0)';
-        };
-        
-        container.onmouseleave = () => {
-            container.style.width = '50px';
-            container.style.background = 'rgba(20, 25, 30, 0.4)';
-            iconDiv.style.opacity = '1';
-            content.style.opacity = '0';
-            content.style.pointerEvents = 'none';
-            content.style.transform = 'translateX(20px)';
-        };
     }
 
     private updateRightSidebarUI(counts: Map<string, number>) {
         const rowsContainer = document.getElementById('district-rows');
         if (!rowsContainer) return;
-        
+        const styleEl = rowsContainer.querySelector('style');
         rowsContainer.innerHTML = '';
+        if (styleEl) rowsContainer.appendChild(styleEl);
+
         const sorted = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0], 'tr-TR'));
-        
+
         sorted.forEach(([name, count]) => {
             if (count === 0) return;
             const row = document.createElement('div');
-            row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; transition: 0.2s; border: 1px solid transparent;`;
-            row.onmouseover = () => { row.style.background = 'rgba(255, 153, 0, 0.2)'; row.style.borderColor = 'rgba(255,153,0,0.5)'; };
-            row.onmouseout = () => { row.style.background = 'rgba(255,255,255,0.05)'; row.style.borderColor = 'transparent'; };
+            row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:3px;border-radius:8px;cursor:pointer;transition:background 0.15s;background:rgba(255,255,255,0.04);`;
+            row.onmouseenter = () => { row.style.background = 'rgba(99,179,237,0.12)'; };
+            row.onmouseleave = () => { row.style.background = 'rgba(255,255,255,0.04)'; };
             row.onclick = () => {
                 const target = this.districtsData.find(d => d.name === name);
-                if (target) {
-                    const [x, y, z] = convertGpsToVector(target.lat, target.lng);
-                    window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { x, z, lat: target.lat, lng: target.lng } }));
-                }
+                if (target) window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { lat: target.lat, lng: target.lng } }));
             };
-
             const nameEl = document.createElement('span');
             nameEl.textContent = name;
-            nameEl.style.cssText = 'font-size: 13px; font-weight: bold; color: #ddd;';
-
-            const countEl = document.createElement('span');
-            countEl.textContent = count.toString();
-            countEl.style.cssText = 'background: #ff9900; color: #000; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 900;';
-
+            nameEl.style.cssText = 'font-size:12px;color:#cbd5e1;font-weight:500;';
+            const badge = document.createElement('span');
+            badge.textContent = String(count);
+            badge.style.cssText = `background:rgba(99,179,237,0.15);color:#93c5fd;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid rgba(99,179,237,0.25);min-width:28px;text-align:center;`;
             row.appendChild(nameEl);
-            row.appendChild(countEl);
+            row.appendChild(badge);
             rowsContainer.appendChild(row);
         });
     }
-
 }
-
