@@ -97,6 +97,43 @@ export class UIManager {
         }, 3000);
     }
 
+    static activePoiList: any[] = [];
+    static activePoiIndex: number = 0;
+
+    static showMultiInfo(pois: any[]) {
+        if (!pois || pois.length === 0) return;
+        this.activePoiList = pois;
+        this.activePoiIndex = 0;
+        this.renderActivePoi();
+    }
+
+    static renderActivePoi() {
+        const poi = this.activePoiList[this.activePoiIndex];
+        if (!poi) return;
+        
+        const r = poi.record;
+        const name = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
+        
+        let html = `
+            <div style="display:flex; align-items:center; gap: 12px;">
+                <span style="color:${poi.color};font-weight:600;">${poi.layerName}:</span>
+                <span style="color:#f8fafc;font-weight:500;font-size:14px">${name}</span>
+        `;
+
+        if (this.activePoiList.length > 1) {
+            html += `
+                <div style="display:flex; align-items:center; gap: 8px; margin-left: 12px; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.2);">
+                    <button onclick="window.prevPoi()" style="background:none; border:none; color:white; cursor:pointer; font-weight:bold; padding:0 4px;">&lt;</button>
+                    <span style="font-size:12px; color:#94a3b8;">${this.activePoiIndex + 1} / ${this.activePoiList.length}</span>
+                    <button onclick="window.nextPoi()" style="background:none; border:none; color:white; cursor:pointer; font-weight:bold; padding:0 4px;">&gt;</button>
+                </div>
+            `;
+        }
+        
+        html += `</div>`;
+        this.showInfo(html);
+    }
+
     static showInfo(html: string) {
         this.infoBox.innerHTML = html;
         this.infoBox.style.display = 'block';
@@ -119,3 +156,18 @@ export class UIManager {
 
     static hideInfo() { this.infoBox.style.display = 'none'; }
 }
+
+// Global functions for buttons in UIManager HTML
+(window as any).prevPoi = () => {
+    if (UIManager.activePoiList.length > 0) {
+        UIManager.activePoiIndex = (UIManager.activePoiIndex - 1 + UIManager.activePoiList.length) % UIManager.activePoiList.length;
+        UIManager.renderActivePoi();
+    }
+};
+
+(window as any).nextPoi = () => {
+    if (UIManager.activePoiList.length > 0) {
+        UIManager.activePoiIndex = (UIManager.activePoiIndex + 1) % UIManager.activePoiList.length;
+        UIManager.renderActivePoi();
+    }
+};

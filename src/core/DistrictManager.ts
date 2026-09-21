@@ -43,9 +43,8 @@ export class DistrictManager {
 
         this.initRightHoverSidebar();
         
-        // Sol menuden katman acilip kapanirsa aninda sayilari guncelle
-        window.addEventListener('layerToggled', () => {
-            this.recalculateCounts();
+        window.addEventListener('poiDataUpdated', (e: any) => {
+            this.extractPointsFromFeatures(e.detail.features);
         });
         
         // Eski bozuk legend eger gizliyse gosterelim (Cunku kullanici sol menuyu kullanmak istiyor)
@@ -62,27 +61,6 @@ export class DistrictManager {
     }
 
     public update(zoom: number = 13) {
-        let currentNodes = 0;
-        this.scene.traverse(node => {
-            if (node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.records || node.userData.record)) {
-                if (node.type === 'Mesh' || node.type === 'InstancedMesh') {
-                    currentNodes++;
-                }
-            }
-        });
-
-        if (currentNodes !== this.lastChildrenCount && currentNodes > 0) {
-            this.extractPoints();
-            this.recalculateCounts();
-            this.lastChildrenCount = currentNodes;
-        }
-
-        // Noktalarin genel gorunurlugu (Zoom'a bagli acilip kapanabilir ama simdilik hep acik tutalim, MapLibre handle etsin)
-        const shouldShowPoints = true; 
-        if (this.pointsVisibleForLOD !== shouldShowPoints) {
-            this.pointsVisibleForLOD = shouldShowPoints;
-            this.setAllOriginalsVisible(shouldShowPoints);
-        }
 
         // Ilce isimlerinin (Sprite) yakinlasinca kaybolmasi
         // zoom > 13.5 -> saydamlasmaya baslar
@@ -134,57 +112,15 @@ export class DistrictManager {
         return val;
     }
 
-    private extractPoints() {
-        this.pointCache = [];
-        
-        const processNode = (node: THREE.Object3D) => {
-            if (node.name === 'GroundPlane' || node.type === 'GridHelper' || node.name === 'TargetPin' || node.name === 'DistrictGroup' || node.name === 'ClusterGroup') return;
-
-            // Eger parent (Grup) gizliyse, noktalari sayma (Sol Menude kapatilmistir)
-            if (node.parent && node.parent.type === 'Group' && node.parent.visible === false) return;
-            if (node.visible === false && node.type === 'Group') return;
-
-            if (node.type === 'Mesh' && node.userData && !node.userData.isDistrict && (node.userData.layerName || node.userData.record)) {
-                // Sadece kendisi de aciksa (Sol menuden kapatilmamissa) dahil et
-                if (node.visible === false && this.isZoomedOut === false) return; 
-                
-                const ilce = this.getIlceFromRecord(node.userData.record);
-                this.pointCache.push({ x: node.position.x, z: node.position.z, mesh: node, visible: true, ilce, layerName: node.userData.layerName || 'Bilinmeyen' });
-            } 
-            else if (node.type === 'InstancedMesh' && node.userData && !node.userData.isDistrict && node.userData.records) {
-                const inst = node as THREE.InstancedMesh;
-                const records = inst.userData.records;
-                const mat = new THREE.Matrix4();
-                const pos = new THREE.Vector3();
-                for(let i=0; i<inst.count; i++) {
-                    inst.getMatrixAt(i, mat);
-                    pos.setFromMatrixPosition(mat);
-                    pos.applyMatrix4(inst.matrixWorld); 
-                    const ilce = this.getIlceFromRecord(records ? records[i] : null);
-                    this.pointCache.push({ x: pos.x, z: pos.z, mesh: inst, index: i, visible: true, ilce, layerName: node.userData.layerName || 'Bilinmeyen' });
-                }
-            } 
-            else if (node.type === 'Group' || node.type === 'Scene') {
-                node.children.forEach(child => processNode(child));
-            }
-        };
-
-        this.scene.updateMatrixWorld(true);
-        this.scene.children.forEach(child => processNode(child));
-    }
-
-    
-    private recalculateCounts() {
-        this.extractPoints();
-
+    private extractPointsFromFeatures(features: any[]) {
         const activeCounts = new Map<string, number>();
-        this.pointCache.forEach(p => {
-            activeCounts.set(p.ilce, (activeCounts.get(p.ilce) || 0) + 1);
+        features.forEach(f => {
+            const ilce = this.getIlceFromRecord(JSON.parse(f.properties.recordRaw));
+            activeCounts.set(ilce, (activeCounts.get(ilce) || 0) + 1);
         });
 
         this.buildCorporateBadges(activeCounts);
         this.updateRightSidebarUI(activeCounts);
-        this.setAllOriginalsVisible(this.pointsVisibleForLOD);
     }
 
 

@@ -245,42 +245,51 @@ export class Engine {
                 window.dispatchEvent(new CustomEvent('flyToDistrict', {
                     detail: { lat: obj.userData.lat, lng: obj.userData.lng }
                 }));
-            } else if (obj.userData?.record) {
-                const r = obj.userData.record;
-                const name = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
-                
-                const lat = parseFloat(r.ENLEM || r.enlem);
-                const lng = parseFloat(r.BOYLAM || r.boylam);
-                
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    UIManager.showInfo(`
-                        <span style="color:#93c5fd;font-weight:600;margin-right:8px">${obj.userData.layerName || 'Bilinmiyor'}:</span><span style="color:#f8fafc;font-weight:500;font-size:14px">${name}</span>
-                    `);
-
-                    this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
-                }
-            } else if ((obj.isInstancedMesh || obj.type === 'InstancedMesh') && obj.userData?.records) {
-                if (hit.instanceId === undefined) {
-                    return;
-                }
-                const r = obj.userData.records[hit.instanceId];
-                if (r) {
-                    let name = r.ADI || r.Adi || r.adi || r.ACIKLAMA;
-                    if (!name) name = 'Bulunamadi. Keys: ' + Object.keys(r).join(', ');
-                    
-                    const lat = parseFloat(r.ENLEM || r.enlem);
-                    const lng = parseFloat(r.BOYLAM || r.boylam);
-                    
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        UIManager.showInfo(`
-                            <span style="color:#93c5fd;font-weight:600;margin-right:8px">${obj.userData.layerName || 'Bilinmiyor'}:</span><span style="color:#f8fafc;font-weight:500;font-size:14px">${name}</span>
-                        `);
-
-                        this.map?.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, essential: true, duration: 1500 });
-                    }
-                }
             }
         });
+
+        // MapLibre Küme Tıklama
+        this.map.on('click', 'clusters', (e: any) => {
+            const features = this.map!.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+            if (!features.length) return;
+            const clusterId = features[0].properties!.cluster_id;
+            const source = this.map!.getSource('izmir-pois') as maplibregl.GeoJSONSource;
+            source.getClusterExpansionZoom(clusterId).then((zoom) => {
+                this.map!.flyTo({
+                    center: (features[0].geometry as any).coordinates,
+                    zoom: zoom
+                });
+            });
+        });
+
+        this.map.on('mouseenter', 'clusters', () => { this.map!.getCanvas().style.cursor = 'pointer'; });
+        this.map.on('mouseleave', 'clusters', () => { this.map!.getCanvas().style.cursor = ''; });
+
+        // MapLibre Tekil Nokta (veya Üst Üste Binen Noktalar) Tıklama
+        this.map.on('click', 'unclustered-point', (e: any) => {
+            // Tıklanan yerdeki TÜM çakışan noktaları al
+            const features = this.map!.queryRenderedFeatures(e.point, { layers: ['unclustered-point'] });
+            if (!features.length) return;
+
+            // MapLibreLayerManager'dan gelen recordRaw string'ini JSON objesine çevir
+            const pois = features.map((f: any) => {
+                return {
+                    layerName: f.properties!.layerName,
+                    color: f.properties!.color,
+                    record: JSON.parse(f.properties!.recordRaw)
+                };
+            });
+
+            // UIManager'e aktar
+            UIManager.showMultiInfo(pois);
+
+            // Kamerayı yaklaştır
+            const coordinates = (features[0].geometry as any).coordinates.slice();
+            this.map!.flyTo({ center: coordinates, zoom: 18, pitch: 60, essential: true, duration: 1500 });
+        });
+
+        this.map.on('mouseenter', 'unclustered-point', () => { this.map!.getCanvas().style.cursor = 'pointer'; });
+        this.map.on('mouseleave', 'unclustered-point', () => { this.map!.getCanvas().style.cursor = ''; });
     }
 
     private updateMouseRay(e: PointerEvent) {
