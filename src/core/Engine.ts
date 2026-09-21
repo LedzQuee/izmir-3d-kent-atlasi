@@ -131,18 +131,22 @@ export class Engine {
         const engine = this;
         const origin: [number, number] = [KONAK_CENTER.lng, KONAK_CENTER.lat];
 
-        // Merkez noktanin Mercator koordinatlari
         const merc = maplibregl.MercatorCoordinate.fromLngLat(origin, 0);
-        // 1 metre kac Mercator birimi eder
         const scale = merc.meterInMercatorCoordinateUnits();
+        const mz = (merc as any).z ?? 0;
 
-        // Three.js koordinat sistemi: X=Dogu, Y=Yukari, Z=Guney
-        // Mercator koordinat sistemi: X=Dogu, Y=Asagi, Z=Yukari
-        // Bu donusum ile Three.js sagnindaki metre cinsinden pozisyonlar
-        // Mercator uzayina dogru mapleniyor.
-        const modelMatrix = new THREE.Matrix4()
-            .makeTranslation(merc.x, merc.y, (merc as any).z ?? 0)
-            .scale(new THREE.Vector3(scale, -scale, scale));
+        // Dogru eksen donusumu:
+        // Three.js: X=dogu(m), Y=yukari(m), Z=guney(m)
+        // Mercator : X=dogu,   Y=guney,     Z=yukari
+        // Yani: MercX = ThreeX*s, MercY = ThreeZ*s, MercZ = ThreeY*s
+        // Matris (satir-major): [row0, row1, row2, row3]
+        const modelMatrix = new THREE.Matrix4();
+        modelMatrix.set(
+            scale, 0,     0,     merc.x,
+            0,     0,     scale, merc.y,
+            0,     scale, 0,     mz,
+            0,     0,     0,     1
+        );
 
         const customLayer: maplibregl.CustomLayerInterface = {
             id: 'three-js-layer',
@@ -156,26 +160,18 @@ export class Engine {
                     antialias: true
                 });
                 engine.renderer.autoClear = false;
-                engine.renderer.shadowMap.enabled = false;
             },
 
             render(_gl: any, matrix: any) {
                 if (!engine.renderer) return;
 
-                // MapLibre'nin tam view-projection matrisini al
-                const mapMatrix = new THREE.Matrix4().fromArray(matrix);
-
-                // Kameranin projection matrisine: viewProjection * modelMatrix
-                engine.camera.projectionMatrix = mapMatrix.multiply(modelMatrix);
-
-                // Kameranin dunya matrisini sifirla (sadece projectionMatrix kullaniyoruz)
+                // viewProjection * modelMatrix
+                const vp = new THREE.Matrix4().fromArray(matrix);
+                engine.camera.projectionMatrix = vp.multiply(modelMatrix);
                 engine.camera.matrixWorldInverse.identity();
                 engine.camera.matrixWorld.identity();
 
-                // Frustum culling'i kapat - noktalar kamera disi gorunmesin diye gitmesin
-                engine.scene.traverse((obj: any) => {
-                    obj.frustumCulled = false;
-                });
+                engine.scene.traverse((obj: any) => { obj.frustumCulled = false; });
 
                 engine.renderer.resetState();
                 engine.renderer.render(engine.scene, engine.camera);
