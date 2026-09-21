@@ -79,11 +79,26 @@ export class HTMLMarkerManager {
                     el.innerText = cluster.properties.point_count_abbreviated;
 
                     el.onclick = () => {
+                        const currentZoom = this.map.getZoom();
                         const expansionZoom = this.supercluster.getClusterExpansionZoom(cluster.id as number);
-                        this.map.flyTo({
-                            center: cluster.geometry.coordinates as [number, number],
-                            zoom: expansionZoom
-                        });
+                        
+                        // Eger maxZoom'a ulasmissak veya artik zoom genisleyemiyorsa, 
+                        // kumenin icindeki tum noktalari cekip < 1 / 3 > seklinde goster
+                        if (currentZoom >= this.supercluster.options.maxZoom! || expansionZoom > this.supercluster.options.maxZoom!) {
+                            const leaves = this.supercluster.getLeaves(cluster.id as number, Infinity);
+                            const pois = leaves.map(leaf => ({
+                                layerName: leaf.properties!.layerName,
+                                color: leaf.properties!.color,
+                                record: JSON.parse(leaf.properties!.recordRaw)
+                            }));
+                            UIManager.showMultiInfo(pois);
+                        } else {
+                            // Degilse, yaklas
+                            this.map.flyTo({
+                                center: cluster.geometry.coordinates as [number, number],
+                                zoom: expansionZoom
+                            });
+                        }
                     };
                 } else {
                     // Tekil nokta tasarimi
