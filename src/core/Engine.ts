@@ -134,9 +134,20 @@ export class Engine {
         const merc = maplibregl.MercatorCoordinate.fromLngLat(origin, 0);
         const scale = merc.meterInMercatorCoordinateUnits();
 
-        console.log('[Engine] MapLibre Custom Layer ekleniyor...');
-        console.log('[Engine] Mercator origin:', merc.x, merc.y, (merc as any).z);
-        console.log('[Engine] Scale (1 metre = mercator):', scale);
+        // MapLibre resmi ornegindeki model transform parametreleri
+        const modelTransform = {
+            translateX: merc.x,
+            translateY: merc.y,
+            translateZ: (merc as any).z || 0,
+            scale: scale
+        };
+
+        // X ekseni etrafinda 90 derece dondurme matrisi
+        // Bu Three.js Y-up sistemini MapLibre Z-up sistemine cevirir
+        const rotationX = new THREE.Matrix4().makeRotationAxis(
+            new THREE.Vector3(1, 0, 0),
+            Math.PI / 2
+        );
 
         const customLayer: maplibregl.CustomLayerInterface = {
             id: 'three-js-layer',
@@ -150,57 +161,44 @@ export class Engine {
                     antialias: true
                 });
                 engine.renderer.autoClear = false;
-                console.log('[Engine] Three.js renderer olusturuldu');
             },
 
             render(_gl: any, args: any) {
                 if (!engine.renderer) return;
 
-                // MapLibre v4+ bazen args bir obje olarak gelir (args.defaultProjectionData.mainMatrix),
-                // bazen dogrudan number[] olarak gelir. Ikisini de destekleyelim.
-                let matrixArray: number[];
+                // MapLibre v4+ API uyumlulugu: matrix parametresi obje veya dizi olabilir
+                let matrixData: any;
                 if (Array.isArray(args)) {
-                    matrixArray = args;
-                } else if (args && args.defaultProjectionData && args.defaultProjectionData.mainMatrix) {
-                    matrixArray = args.defaultProjectionData.mainMatrix;
-                } else if (args && args.projectionMatrix) {
-                    matrixArray = args.projectionMatrix;
+                    matrixData = args;
+                } else if (args && args.defaultProjectionData) {
+                    matrixData = args.defaultProjectionData.mainMatrix;
                 } else {
-                    // Eski maplibre API: ikinci parametre dogrudan Float64Array
-                    matrixArray = Array.from(args);
+                    matrixData = args;
                 }
 
-                const vp = new THREE.Matrix4().fromArray(matrixArray);
+                // MapLibre'nin view-projection matrisi
+                const m = new THREE.Matrix4().fromArray(matrixData);
 
-                // Model matrisi: Three.js metre koordinatlarini Mercator'a donustur
-                // Three.js: X=dogu(m), Y=yukari(m), Z=-guney(m)  (coordinates.ts'de z = -(lat-center)*...)
-                // Mercator: X=dogu, Y=guney, Z=yukari (sol-el sistemi, Y asagi)
-                //
-                // convertGpsToVector donusu:
-                //   x = (lng - center.lng) * METERS_PER_LNG  -> dogu yonde metre
-                //   z = -(lat - center.lat) * METERS_PER_LAT -> kuzey pozitif mi negatif mi?
-                //     lat > center => z negatif (kuzeye giden negatif)
-                //   y = 15 (yukseklik)
-                //
-                // Mercator'da:
-                //   x artarsa doguya gider     -> ThreeX * scale
-                //   y artarsa guneye gider     -> -ThreeZ * scale  (cunku z zaten ters)
-                //   z artarsa yukariya gider   -> ThreeY * scale (negatif cunku mercator z asagi)
+                // Model matrisi: translate -> scale -> rotate
+                // Bu MapLibre'nin RESMI Three.js entegrasyon orneginden alinmistir
+                const l = new THREE.Matrix4()
+                    .makeTranslation(
+                        modelTransform.translateX,
+                        modelTransform.translateY,
+                        modelTransform.translateZ
+                    )
+                    .scale(
+                        new THREE.Vector3(
+                            modelTransform.scale,
+                            -modelTransform.scale,  // Y ekseni ters (Mercator kurali)
+                            modelTransform.scale
+                        )
+                    )
+                    .multiply(rotationX);
 
-                const modelMatrix = new THREE.Matrix4();
-                // Column-major (Three.js default)
-                // col0          col1          col2          col3
-                modelMatrix.set(
-                    scale,  0,      0,      merc.x,   // col0: ThreeX -> MercX
-                    0,      0,     -scale,  merc.y,   // col1: ThreeZ (negatif) -> MercY 
-                    0,      scale,  0,      (merc as any).z ?? 0,  // col2: ThreeY -> MercZ
-                    0,      0,      0,      1
-                );
-
-                engine.camera.projectionMatrix = vp.clone().multiply(modelMatrix);
+                // camera.projectionMatrix = viewProjection * modelMatrix
+                engine.camera.projectionMatrix = m.multiply(l);
                 engine.camera.projectionMatrixInverse.copy(engine.camera.projectionMatrix).invert();
-                engine.camera.matrixWorldInverse.identity();
-                engine.camera.matrixWorld.identity();
 
                 engine.scene.traverse((obj: any) => { obj.frustumCulled = false; });
 
@@ -211,19 +209,6 @@ export class Engine {
         };
 
         this.map!.addLayer(customLayer);
-
-        // Debug: 3 saniye sonra sahne icerigini logla
-        setTimeout(() => {
-            let meshCount = 0;
-            engine.scene.traverse((obj: any) => {
-                if (obj.type === 'Mesh' || obj.type === 'InstancedMesh' || obj.type === 'Sprite') meshCount++;
-            });
-            console.log('[Engine] Sahnedeki toplam mesh/sprite sayisi:', meshCount);
-            console.log('[Engine] Sahne children sayisi:', engine.scene.children.length);
-            engine.scene.children.forEach((c: any) => {
-                console.log('  -', c.type, c.name || '', 'visible:', c.visible, 'children:', c.children?.length);
-            });
-        }, 5000);
     }
 
     private setupInteractions() {
