@@ -25,7 +25,11 @@ export class Engine {
         this.scene.add(dirLight);
 
         // MapLibre icin DOM hazirligi (Canvas'i gizleyip div ekliyoruz)
-        canvas.style.display = 'none';
+        if (canvas) canvas.style.display = 'none';
+        else {
+            const existingCanvas = document.querySelector('canvas');
+            if (existingCanvas) existingCanvas.style.display = 'none';
+        }
         const mapDiv = document.createElement('div');
         mapDiv.id = 'map-container';
         mapDiv.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%;';
