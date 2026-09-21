@@ -57,6 +57,7 @@ export class Engine {
     private initMapLibre(container: HTMLDivElement) {
         const style: any = {
             version: 8,
+            glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
             sources: {
                 'esri-satellite': {
                     type: 'raster',
@@ -207,7 +208,7 @@ export class Engine {
                 engine.map!.triggerRepaint();
             }
         };
-        // this.map!.addLayer(customLayer);
+        this.map!.addLayer(customLayer);
     }
 
     private setupInteractions() {
