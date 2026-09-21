@@ -23,17 +23,11 @@ export class Engine {
         // PerspectiveCamera — projection matrix MapLibre tarafindan her frame ezilecek
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1e8);
 
+        // Isik
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
         const dir = new THREE.DirectionalLight(0xffffff, 0.6);
         dir.position.set(1000, 3000, 1000);
         this.scene.add(dir);
-
-        // DEV KÜP: GÖRÜNÜRLÜK TESTİ İÇİN
-        const cubeGeo = new THREE.BoxGeometry(500, 500, 500); // 500 metre çapında dev bir küp
-        const cubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }); // Derinlik testi kapalı, her şeyin üstünde olmalı
-        const devKup = new THREE.Mesh(cubeGeo, cubeMat);
-        devKup.position.set(0, 0, 0); // Konak Merkez
-        this.scene.add(devKup);
 
         // Eski canvas varsa gizle, MapLibre kendi canvas'ini olusturacak
         const oldCanvas = document.querySelector('canvas');
@@ -254,13 +248,27 @@ export class Engine {
                     <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
                     <div style="font-size:13px">${name}</div>
                 `, e as MouseEvent);
+                
+                // Noktaya zoom yap
+                const lat = parseFloat(r.ENLEM || r.enlem);
+                const lng = parseFloat(r.BOYLAM || r.boylam);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    this.map?.flyTo({ center: [lng, lat], zoom: 16, essential: true });
+                }
             } else if (obj.type === 'InstancedMesh' && obj.userData?.records) {
                 const r = obj.userData.records[hit.instanceId!];
                 if (r) {
                     UIManager.showInfo(`
                         <div style="font-weight:600;color:#93c5fd;margin-bottom:6px">${obj.userData.layerName || ''}</div>
-                        <div style="font-size:13px">${r.ADI || r.Adi || 'Bilinmiyor'}</div>
+                        <div style="font-size:13px">${r.ADI || r.Adi || r.adi || 'Bilinmiyor'}</div>
                     `, e as MouseEvent);
+                    
+                    // Noktaya zoom yap
+                    const lat = parseFloat(r.ENLEM || r.enlem);
+                    const lng = parseFloat(r.BOYLAM || r.boylam);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        this.map?.flyTo({ center: [lng, lat], zoom: 16, essential: true });
+                    }
                 }
             }
         });

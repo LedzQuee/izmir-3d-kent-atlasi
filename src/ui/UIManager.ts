@@ -1,4 +1,4 @@
-﻿export class UIManager {
+export class UIManager {
     static busStopMode: boolean = false;
     static infoBox: HTMLDivElement;
     static loader: HTMLDivElement;
@@ -18,7 +18,7 @@
             display: none;
             min-width: 220px;
             max-width: 320px;
-            z-index: 100;
+            z-index: 999999;
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             pointer-events: none;
