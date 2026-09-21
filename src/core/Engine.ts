@@ -181,6 +181,7 @@ export class Engine {
                 
                 engine.scene.matrixAutoUpdate = false;
                 engine.scene.matrix = l; // Model transformunu direkt sahneye uygula
+                engine.scene.updateMatrixWorld(true);
                 
                 engine.camera.position.set(0,0,0);
                 engine.camera.quaternion.set(0,0,0,1);
