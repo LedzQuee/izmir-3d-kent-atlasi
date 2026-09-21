@@ -280,10 +280,81 @@ export class DistrictManager {
         const header = document.createElement('div');
         header.style.cssText = `padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;`;
         header.innerHTML = `
-            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#64748b;text-transform:uppercase;margin-bottom:4px">Veri Dagılımı</div>
-            <div style="font-size:17px;font-weight:700;color:#f1f5f9">Ilce Sıralaması</div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#64748b;text-transform:uppercase;margin-bottom:4px">Veri Dagilimi</div>
+            <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:12px;">Ilce Siralamasi</div>
         `;
         container.appendChild(header);
+
+        // --- ARAMA KUTUSU ---
+        const searchContainer = document.createElement('div');
+        searchContainer.style.cssText = 'position: relative; margin-top: 10px;';
+        
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Nokta/Mekan Ara...';
+        searchInput.style.cssText = 'width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; outline: none; font-size: 13px;';
+        
+        const searchResults = document.createElement('div');
+        searchResults.style.cssText = 'position: absolute; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; max-height: 250px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); margin-top: 4px;';
+        
+        searchContainer.appendChild(searchInput);
+        searchContainer.appendChild(searchResults);
+        header.appendChild(searchContainer); // Header'in alt kismina ekle
+
+        let searchTimeout: any;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = (e.target as HTMLInputElement).value.toLowerCase().trim();
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                // @ts-ignore
+                const allFeatures = window.allMapLibreFeatures || [];
+                const matches = allFeatures.filter((f: any) => f.properties.recordName.toLowerCase().includes(query)).slice(0, 15);
+                
+                searchResults.innerHTML = '';
+                if (matches.length > 0) {
+                    matches.forEach((f: any) => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; font-size: 12px; color: #cbd5e1; display:flex; align-items:center; gap:8px; line-height: 1.3;';
+                        div.innerHTML = `<div style="width:8px;height:8px;border-radius:50%;background:${f.properties.color};flex-shrink:0;"></div> <span>${f.properties.recordName}</span>`;
+                        div.onmouseenter = () => div.style.background = 'rgba(255,255,255,0.08)';
+                        div.onmouseleave = () => div.style.background = 'transparent';
+                        div.onclick = () => {
+                            searchResults.style.display = 'none';
+                            searchInput.value = '';
+                            const coords = f.geometry.coordinates;
+                            // @ts-ignore
+                            window.engineInstance?.map?.flyTo({ center: coords, zoom: 18, pitch: 60 });
+                            // @ts-ignore
+                            if (window.UIManager) {
+                                // @ts-ignore
+                                window.UIManager.showMultiInfo([{
+                                    layerName: f.properties.layerName,
+                                    color: f.properties.color,
+                                    record: JSON.parse(f.properties.recordRaw)
+                                }]);
+                            }
+                        };
+                        searchResults.appendChild(div);
+                    });
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            }, 300);
+        });
+
+        // Disari tiklaninca sonuclari gizle
+        document.addEventListener('click', (e) => {
+            if (!searchContainer.contains(e.target as Node)) {
+                searchResults.style.display = 'none';
+            }
+        });
+        // --- ARAMA KUTUSU BITIS ---
 
         const listArea = document.createElement('div');
         listArea.id = 'district-rows';

@@ -107,7 +107,7 @@ export class Engine {
             antialias: true
         });
 
-        this.map!.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+        this.map!.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
         this.map!.on('style.load', () => {
             this.addThreeJSLayer();
