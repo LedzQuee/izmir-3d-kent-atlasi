@@ -3,6 +3,8 @@ import Supercluster from 'supercluster';
 import { Engine } from '../core/Engine';
 import { UIManager } from '../ui/UIManager';
 
+const CLUSTER_MAX_ZOOM = 20;
+
 export class HTMLMarkerManager {
     private map: maplibregl.Map;
     private supercluster: Supercluster;
@@ -13,22 +15,20 @@ export class HTMLMarkerManager {
     constructor(engine: Engine) {
         this.map = engine.map!;
         
-        // Supercluster yapilandirmasi: maxZoom 20'ye cikarildi (daha cok dogal dagilmasi icin)
         this.supercluster = new Supercluster({
             radius: 40,
-            maxZoom: 20
+            maxZoom: CLUSTER_MAX_ZOOM
         });
         
         this.supercluster.load([]);
 
-        this.map.on('move', () => this.updateMarkers());
-        this.map.on('moveend', () => this.updateMarkers());
+        this.map.on('move', () => this.updateMarkersSafe());
+        this.map.on('moveend', () => this.updateMarkersSafe());
         
-        // Bosa tiklaninca orumcek agini (spiderify) kapat
         this.map.on('click', () => {
             if (this.spiderifiedClusterId !== null) {
                 this.spiderifiedClusterId = null;
-                this.updateMarkers();
+                this.updateMarkersSafe();
             }
         });
     }
@@ -37,7 +37,16 @@ export class HTMLMarkerManager {
         this.currentFeatures = features;
         this.supercluster.load(features);
         this.spiderifiedClusterId = null;
-        this.updateMarkers();
+        this.updateMarkersSafe();
+    }
+
+    private updateMarkersSafe() {
+        try {
+            this.updateMarkers();
+        } catch (err: any) {
+            console.error('Marker guncelleme hatasi:', err);
+            // Hata olursa en azindan uygulamayi cokertmemesi icin sessizce yut
+        }
     }
 
     private updateMarkers() {
@@ -59,7 +68,6 @@ export class HTMLMarkerManager {
             const isCluster = cluster.properties?.cluster;
             const clusterId = cluster.id as number;
             
-            // Spiderify olmus kume mi?
             const isSpiderified = isCluster && this.spiderifiedClusterId === clusterId;
             const id = isCluster ? `cluster-${cluster.id}${isSpiderified ? '-spider' : ''}` : `point-${cluster.properties.recordRaw}`;
             newMarkerIds.add(id);
@@ -69,32 +77,28 @@ export class HTMLMarkerManager {
                 el.style.cursor = 'pointer';
 
                 if (isSpiderified) {
-                    // --- CSS SPIDERIFY (ORUMCEK AGI) GORUNUMU ---
-                    const leaves = this.supercluster.getLeaves(clusterId, Infinity);
+                    // --- CSS SPIDERIFY ---
+                    const leaves = this.supercluster.getLeaves(clusterId, 9999);
                     const total = leaves.length;
                     
                     el.style.position = 'relative';
                     el.style.width = '0px';
                     el.style.height = '0px';
                     
-                    // Merkez nokta
                     const centerDot = document.createElement('div');
                     centerDot.style.cssText = 'position:absolute; top:-6px; left:-6px; width:12px; height:12px; border-radius:50%; background:#fff; box-shadow:0 0 5px rgba(0,0,0,0.5); z-index:2;';
                     el.appendChild(centerDot);
 
                     leaves.forEach((leaf, i) => {
                         const angle = (i / total) * Math.PI * 2;
-                        // Kalabalikliga gore cap
                         const distance = total <= 10 ? 45 : (total <= 20 ? 65 : 85); 
                         const x = Math.cos(angle) * distance;
                         const y = Math.sin(angle) * distance;
 
-                        // Baglanti cizgisi
                         const line = document.createElement('div');
                         line.style.cssText = `position:absolute; top:0; left:0; width:${distance}px; height:2px; background:rgba(255,255,255,0.6); transform-origin:0 50%; transform:rotate(${angle}rad); z-index:1;`;
                         el.appendChild(line);
 
-                        // Yaprak (Nokta)
                         const dot = document.createElement('div');
                         const color = leaf.properties!.color || '#00aaff';
                         dot.style.cssText = `position:absolute; top:0; left:0; transform:translate(calc(-50% + ${x}px), calc(-50% + ${y}px)); width:24px; height:24px; border-radius:50%; background:${color}; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.4); z-index:3; transition:transform 0.2s;`;
@@ -104,17 +108,19 @@ export class HTMLMarkerManager {
                         
                         dot.onclick = (e) => {
                             e.stopPropagation();
-                            const rec = JSON.parse(leaf.properties!.recordRaw);
-                            UIManager.showMultiInfo([{
-                                layerName: leaf.properties!.layerName,
-                                color: leaf.properties!.color,
-                                record: rec
-                            }]);
+                            try {
+                                const rec = JSON.parse(leaf.properties!.recordRaw);
+                                UIManager.showMultiInfo([{
+                                    layerName: leaf.properties!.layerName,
+                                    color: leaf.properties!.color,
+                                    record: rec
+                                }]);
+                            } catch (err) { console.error(err); }
                         };
                         el.appendChild(dot);
                     });
                 } else if (isCluster) {
-                    // --- NORMAL KUME GORUNUMU ---
+                    // --- NORMAL KUME ---
                     const count = cluster.properties.point_count;
                     const size = count < 20 ? 40 : count < 100 ? 50 : 60;
                     const bg = count < 20 ? 'rgba(59, 130, 246, 0.9)' : count < 100 ? 'rgba(139, 92, 246, 0.9)' : 'rgba(236, 72, 153, 0.9)';
@@ -134,34 +140,32 @@ export class HTMLMarkerManager {
                     el.innerText = cluster.properties.point_count_abbreviated;
 
                     el.onclick = (e) => {
-                        e.stopPropagation(); // Haritaya tiklamayi engelle
-                        const currentZoom = this.map.getZoom();
-                        const expansionZoom = this.supercluster.getClusterExpansionZoom(clusterId);
-                        
-                        // Eger artik yaklasamiyorsak (veya cok kalabaliksa)
-                        if (currentZoom >= this.supercluster.options.maxZoom! || expansionZoom > this.supercluster.options.maxZoom! || expansionZoom === currentZoom) {
-                            const leaves = this.supercluster.getLeaves(clusterId, Infinity);
+                        e.stopPropagation();
+                        try {
+                            const currentZoom = this.map.getZoom();
+                            const expansionZoom = this.supercluster.getClusterExpansionZoom(clusterId);
                             
-                            if (leaves.length <= 40) {
-                                // 40'tan azsa CSS ile etrafa sac (Spiderify)
-                                this.spiderifiedClusterId = clusterId;
-                                this.updateMarkers();
+                            if (currentZoom >= CLUSTER_MAX_ZOOM || expansionZoom > CLUSTER_MAX_ZOOM || expansionZoom === currentZoom) {
+                                const leaves = this.supercluster.getLeaves(clusterId, 9999);
+                                
+                                if (leaves.length <= 40) {
+                                    this.spiderifiedClusterId = clusterId;
+                                    this.updateMarkersSafe();
+                                } else {
+                                    const pois = leaves.map(leaf => ({
+                                        layerName: leaf.properties!.layerName,
+                                        color: leaf.properties!.color,
+                                        record: JSON.parse(leaf.properties!.recordRaw)
+                                    }));
+                                    UIManager.showMultiInfo(pois);
+                                }
                             } else {
-                                // 40'tan coksa cok kalabalik olur, liste halinde goster
-                                const pois = leaves.map(leaf => ({
-                                    layerName: leaf.properties!.layerName,
-                                    color: leaf.properties!.color,
-                                    record: JSON.parse(leaf.properties!.recordRaw)
-                                }));
-                                UIManager.showMultiInfo(pois);
+                                this.map.flyTo({
+                                    center: cluster.geometry.coordinates as [number, number],
+                                    zoom: expansionZoom
+                                });
                             }
-                        } else {
-                            // Hala yaklasabiliyorsak yaklas
-                            this.map.flyTo({
-                                center: cluster.geometry.coordinates as [number, number],
-                                zoom: expansionZoom
-                            });
-                        }
+                        } catch (err) { console.error(err); }
                     };
                 } else {
                     // --- TEKIL NOKTA ---
@@ -174,25 +178,28 @@ export class HTMLMarkerManager {
 
                     el.onclick = (e) => {
                         e.stopPropagation();
-                        const rec = JSON.parse(cluster.properties.recordRaw);
-                        UIManager.showMultiInfo([{
-                            layerName: cluster.properties.layerName,
-                            color: cluster.properties.color,
-                            record: rec
-                        }]);
-                        this.map.flyTo({
-                            center: cluster.geometry.coordinates as [number, number],
-                            zoom: 18,
-                            pitch: 60
-                        });
+                        try {
+                            const rec = JSON.parse(cluster.properties.recordRaw);
+                            UIManager.showMultiInfo([{
+                                layerName: cluster.properties.layerName,
+                                color: cluster.properties.color,
+                                record: rec
+                            }]);
+                            this.map.flyTo({
+                                center: cluster.geometry.coordinates as [number, number],
+                                zoom: 18,
+                                pitch: 60
+                            });
+                        } catch (err) { console.error(err); }
                     };
                 }
 
-                const marker = new maplibregl.Marker({ element: el })
-                    .setLngLat(cluster.geometry.coordinates as [number, number])
-                    .addTo(this.map);
-                
-                this.markers.set(id, marker);
+                try {
+                    const marker = new maplibregl.Marker({ element: el })
+                        .setLngLat(cluster.geometry.coordinates as [number, number])
+                        .addTo(this.map);
+                    this.markers.set(id, marker);
+                } catch (err) { console.error(err); }
             }
         });
 
