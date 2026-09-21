@@ -183,7 +183,7 @@ export class Engine {
                     }
                 },
 
-                render(args: any) {
+                render(gl: WebGL2RenderingContext, args: any) {
                     if (!engine.renderer) return;
 
                     let matrixData: any;
@@ -202,7 +202,14 @@ export class Engine {
                             div.style.bottom = '10px'; div.style.left = '10px';
                             div.style.background = 'red'; div.style.color = 'white'; div.style.padding = '10px';
                             div.style.zIndex = '999999';
-                            div.innerHTML = 'Render ERROR: Matrix bulunamadi! args: ' + Object.keys(args).join(',');
+                            
+                            // Debug için args'ın ne olduğunu daha iyi loglayalım
+                            let argInfo = typeof args;
+                            if (args) {
+                                argInfo += ' constructor: ' + (args.constructor ? args.constructor.name : 'null');
+                            }
+                            
+                            div.innerHTML = 'Render ERROR: Matrix bulunamadi! args info: ' + argInfo;
                             document.body.appendChild(div);
                         }
                         return;
