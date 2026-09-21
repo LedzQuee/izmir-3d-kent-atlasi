@@ -126,166 +126,81 @@ export class Engine {
     }
 
     private addThreeJSLayer() {
-        try {
-            const engine = this;
-            const origin: [number, number] = [KONAK_CENTER.lng, KONAK_CENTER.lat];
+        const engine = this;
+        const origin: [number, number] = [KONAK_CENTER.lng, KONAK_CENTER.lat];
 
-            const merc = maplibregl.MercatorCoordinate.fromLngLat(origin, 0);
-            const scale = merc.meterInMercatorCoordinateUnits();
+        const merc = maplibregl.MercatorCoordinate.fromLngLat(origin, 0);
+        const scale = merc.meterInMercatorCoordinateUnits();
 
-            // MapLibre resmi ornegindeki model transform parametreleri
-            const modelTransform = {
-                translateX: merc.x,
-                translateY: merc.y,
-                translateZ: (merc as any).z || 0,
-                scale: scale
-            };
+        const modelTransform = {
+            translateX: merc.x,
+            translateY: merc.y,
+            translateZ: (merc as any).z || 0,
+            scale: scale
+        };
 
-            // X ekseni etrafinda 90 derece dondurme matrisi
-            const rotationX = new THREE.Matrix4().makeRotationAxis(
-                new THREE.Vector3(1, 0, 0),
-                Math.PI / 2
-            );
+        const rotationX = new THREE.Matrix4().makeRotationAxis(
+            new THREE.Vector3(1, 0, 0),
+            Math.PI / 2
+        );
 
-            const customLayer: maplibregl.CustomLayerInterface = {
-                id: 'three-js-layer',
-                type: 'custom',
-                renderingMode: '3d',
+        const customLayer: maplibregl.CustomLayerInterface = {
+            id: 'three-js-layer',
+            type: 'custom',
+            renderingMode: '3d',
 
-                onAdd(_map: any, gl: WebGL2RenderingContext) {
-                    try {
-                        engine.renderer = new THREE.WebGLRenderer({
-                            canvas: _map.getCanvas(),
-                            context: gl,
-                            antialias: true
-                        });
-                        engine.renderer.autoClear = false;
-                        
-                        // Ekranda basari mesaji goster (sadece ilk sefer)
-                        if (!document.getElementById('onadd-success')) {
-                            const div = document.createElement('div');
-                            div.id = 'onadd-success';
-                            div.style.position = 'fixed';
-                            div.style.top = '10px'; div.style.right = '10px';
-                            div.style.background = 'green'; div.style.color = 'white'; div.style.padding = '5px';
-                            div.style.zIndex = '999999';
-                            div.innerHTML = 'Three.js onAdd basarili!';
-                            document.body.appendChild(div);
-                        }
-                    } catch (e: any) {
-                        const div = document.createElement('div');
-                        div.style.position = 'fixed';
-                        div.style.top = '50px'; div.style.right = '10px';
-                        div.style.background = 'red'; div.style.color = 'white'; div.style.padding = '10px';
-                        div.style.zIndex = '999999';
-                        div.innerHTML = 'onAdd ERROR: ' + e.message;
-                        document.body.appendChild(div);
-                    }
-                },
+            onAdd(_map: any, gl: WebGL2RenderingContext) {
+                engine.renderer = new THREE.WebGLRenderer({
+                    canvas: _map.getCanvas(),
+                    context: gl,
+                    antialias: true
+                });
+                engine.renderer.autoClear = false;
+            },
 
-                render(gl: WebGL2RenderingContext, args: any) {
-                    if (!engine.renderer) return;
+            render(gl: WebGL2RenderingContext, args: any) {
+                if (!engine.renderer) return;
 
-                    let matrixData: any;
-                    if (args.modelViewProjectionMatrix) {
-                        matrixData = args.modelViewProjectionMatrix;
-                    } else if (args.defaultProjectionData && args.defaultProjectionData.mainMatrix) {
-                        matrixData = args.defaultProjectionData.mainMatrix;
-                    } else if (args.length === 16) {
-                        matrixData = args;
-                    } else {
-                        // Matrix bulunamazsa ekrana yaz
-                        if (!(window as any).matrixError) {
-                            (window as any).matrixError = true;
-                            const div = document.createElement('div');
-                            div.style.position = 'fixed';
-                            div.style.bottom = '10px'; div.style.left = '10px';
-                            div.style.background = 'red'; div.style.color = 'white'; div.style.padding = '10px';
-                            div.style.zIndex = '999999';
-                            
-                            // Debug için args'ın ne olduğunu daha iyi loglayalım
-                            let argInfo = typeof args;
-                            if (args) {
-                                argInfo += ' constructor: ' + (args.constructor ? args.constructor.name : 'null');
-                            }
-                            
-                            div.innerHTML = 'Render ERROR: Matrix bulunamadi! args info: ' + argInfo;
-                            document.body.appendChild(div);
-                        }
-                        return;
-                    }
-
-                    const m = new THREE.Matrix4().fromArray(matrixData);
-
-                    if (!(window as any).debugMatrix) {
-                        (window as any).debugMatrix = true;
-                        
-                        const debugDiv = document.createElement('div');
-                        debugDiv.style.position = 'fixed';
-                        debugDiv.style.top = '10px';
-                        debugDiv.style.left = '50%';
-                        debugDiv.style.transform = 'translateX(-50%)';
-                        debugDiv.style.backgroundColor = 'rgba(0,0,0,0.8)';
-                        debugDiv.style.color = 'lime';
-                        debugDiv.style.padding = '10px';
-                        debugDiv.style.fontFamily = 'monospace';
-                        debugDiv.style.zIndex = '999999';
-                        debugDiv.style.maxWidth = '80vw';
-                        debugDiv.style.wordWrap = 'break-word';
-                        
-                        let argsKeys = Object.keys(args).join(', ');
-                        let matrixIsArray = Array.isArray(matrixData) || matrixData instanceof Float32Array || matrixData instanceof Float64Array;
-                        let matrixLength = matrixData ? matrixData.length : 'undefined';
-                        
-                        debugDiv.innerHTML = `
-                            <b>[DEBUG-MATRIX]</b><br>
-                            args keys: ${argsKeys}<br>
-                            matrixData is array? ${matrixIsArray} (length: ${matrixLength})<br>
-                            matrix elements: ${m.elements.map((e: number) => e.toFixed(2)).join(', ')}
-                        `;
-                        document.body.appendChild(debugDiv);
-                    }
-
-                    // Model matrisi (MapLibre resmi ornegi)
-                    const l = new THREE.Matrix4()
-                        .makeTranslation(
-                            modelTransform.translateX,
-                            modelTransform.translateY,
-                            modelTransform.translateZ
-                        )
-                        .scale(
-                            new THREE.Vector3(
-                                modelTransform.scale,
-                                -modelTransform.scale,
-                                modelTransform.scale
-                            )
-                        )
-                        .multiply(rotationX);
-
-                    engine.camera.projectionMatrix = m.multiply(l);
-                    engine.camera.projectionMatrixInverse.copy(engine.camera.projectionMatrix).invert();
-
-                    engine.scene.traverse((obj: any) => { obj.frustumCulled = false; });
-
-                    engine.renderer.resetState();
-                    engine.renderer.render(engine.scene, engine.camera);
-                    engine.map!.triggerRepaint();
+                let matrixData: any;
+                if (args.modelViewProjectionMatrix) {
+                    matrixData = args.modelViewProjectionMatrix;
+                } else if (args.defaultProjectionData && args.defaultProjectionData.mainMatrix) {
+                    matrixData = args.defaultProjectionData.mainMatrix;
+                } else if (args.length === 16) {
+                    matrixData = args;
+                } else {
+                    return;
                 }
-            };
 
-            this.map!.addLayer(customLayer);
-        } catch (e: any) {
-            const errDiv = document.createElement('div');
-            errDiv.style.position = 'fixed';
-            errDiv.style.top = '10px';
-            errDiv.style.left = '10px';
-            errDiv.style.backgroundColor = 'red';
-            errDiv.style.color = 'white';
-            errDiv.style.padding = '15px';
-            errDiv.style.zIndex = '9999999';
-            errDiv.innerHTML = `<b>addThreeJSLayer HATASI:</b><br>${e.message}`;
-            document.body.appendChild(errDiv);
-        }
+                const m = new THREE.Matrix4().fromArray(matrixData);
+
+                const l = new THREE.Matrix4()
+                    .makeTranslation(
+                        modelTransform.translateX,
+                        modelTransform.translateY,
+                        modelTransform.translateZ
+                    )
+                    .scale(
+                        new THREE.Vector3(
+                            modelTransform.scale,
+                            -modelTransform.scale,
+                            modelTransform.scale
+                        )
+                    )
+                    .multiply(rotationX);
+
+                engine.camera.projectionMatrix = m.multiply(l);
+                engine.camera.projectionMatrixInverse.copy(engine.camera.projectionMatrix).invert();
+
+                engine.scene.traverse((obj: any) => { obj.frustumCulled = false; });
+
+                engine.renderer.resetState();
+                engine.renderer.render(engine.scene, engine.camera);
+                engine.map!.triggerRepaint();
+            }
+        };
+
+        this.map!.addLayer(customLayer);
     }
 
     private setupInteractions() {
