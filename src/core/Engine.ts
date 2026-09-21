@@ -290,6 +290,10 @@ export class Engine {
         
         const direction = target.sub(origin).normalize();
         this.raycaster.set(origin, direction);
+        
+        // Sprite'larin raycast yapabilmesi icin raycaster'a kamerayi bildirmemiz zorunlu.
+        // setFromCamera kullanmadigimiz icin bunu manuel set ediyoruz:
+        this.raycaster.camera = this.camera;
     }
 
     private getInteractableObjects(): THREE.Object3D[] {
