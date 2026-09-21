@@ -207,8 +207,7 @@ export class Engine {
                 engine.map!.triggerRepaint();
             }
         };
-
-        this.map!.addLayer(customLayer);
+        // this.map!.addLayer(customLayer);
     }
 
     private setupInteractions() {

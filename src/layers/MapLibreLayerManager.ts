@@ -77,6 +77,7 @@ export class MapLibreLayerManager {
         this.allFeatures = featureArrays.flat();
 
         this.updateData();
+        UIManager.showInfo(`Sistem Yüklendi: ${this.allFeatures.length} adet veri işleniyor...`);
     }
 
     static toggleLayer(layerId: string, visible: boolean) {
@@ -176,6 +177,25 @@ export class MapLibreLayerManager {
                 'circle-blur': 0.2,
                 'circle-stroke-width': 4,
                 'circle-stroke-color': 'rgba(255, 255, 255, 1)'
+            }
+        });
+
+        // DEBUG: Giant red circle to verify rendering
+        this.map.addSource('debug-source', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [27.1428, 38.4237] },
+                properties: {}
+            }
+        });
+        this.map.addLayer({
+            id: 'debug-layer',
+            type: 'circle',
+            source: 'debug-source',
+            paint: {
+                'circle-color': '#ff0000',
+                'circle-radius': 100
             }
         });
     }
