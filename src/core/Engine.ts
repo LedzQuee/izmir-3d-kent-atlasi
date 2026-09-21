@@ -1,213 +1,264 @@
 ﻿import * as THREE from 'three';
-import { MapControls } from 'three/examples/jsm/controls/MapControls';
-import { fetchNearestStops, clearNearestStops } from '../layers/OtobusDuraklariLayer';
-import { UIManager } from '../ui/UIManager';
+import maplibregl from 'maplibre-gl';
+import { KONAK_CENTER } from '../utils/coordinates';
 import { DistrictManager } from './DistrictManager';
 
 export class Engine {
-  public scene: THREE.Scene;
-  public camera: THREE.PerspectiveCamera;
-  public renderer: THREE.WebGLRenderer;
-  public controls: MapControls;
-  
-  private raycaster: THREE.Raycaster;
-  private mouse: THREE.Vector2;
-  private pointerDownPos: THREE.Vector2;
-  private districtManager: DistrictManager;
+    public scene: THREE.Scene;
+    public camera: THREE.Camera;
+    public renderer: THREE.WebGLRenderer | null = null;
+    public map: maplibregl.Map | null = null;
+    public districtManager: DistrictManager | null = null;
 
-  constructor() {
-    // 3. UI TEMIZLIGI: Spagetti DOM'dan kurtulduk. Merkezi UI'i baslatiyoruz.
-    UIManager.init();
+    constructor(canvas: HTMLCanvasElement) {
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.Camera(); // MapLibre layer'da projection matrix ile ezilecek
+        
+        // Aydinlatma
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        this.scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(1000, 3000, 1000);
+        this.scene.add(dirLight);
 
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 100, 200000);
-    this.camera.position.set(0, 5000, 5000);
+        // MapLibre icin DOM hazirligi (Canvas'i gizleyip div ekliyoruz)
+        canvas.style.display = 'none';
+        const mapDiv = document.createElement('div');
+        mapDiv.id = 'map-container';
+        mapDiv.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%;';
+        document.body.appendChild(mapDiv);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(this.renderer.domElement);
+        this.initMapLibre(mapDiv);
+        this.districtManager = new DistrictManager(this.scene, this.camera as THREE.PerspectiveCamera);
 
-    this.controls = new MapControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.screenSpacePanning = false; 
-    this.controls.minDistance = 50; 
-    this.controls.maxDistance = 50000; 
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.05; 
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(1000, 2000, 1000);
-    this.scene.add(dirLight);
-
-    const gridHelper = new THREE.GridHelper(200000, 200, 0x444444, 0x222222);
-    this.scene.add(gridHelper);
-
-    const groundGeo = new THREE.PlaneGeometry(200000, 200000);
-    groundGeo.rotateX(-Math.PI / 2);
-    const groundMat = new THREE.MeshBasicMaterial({ visible: false });
-    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-    groundMesh.name = 'GroundPlane';
-    // Tepeler eklendigi icin zemini hafif asagi aliyoruz (klipleme olmamasi icin)
-    groundMesh.position.y = -10; 
-    this.scene.add(groundMesh);
-
-    this.districtManager = new DistrictManager(this.scene, this.camera);
-    window.addEventListener('resize', this.onWindowResize.bind(this));
-    this.controls.addEventListener('change', () => this.districtManager.update());
-    setInterval(() => this.districtManager.update(), 1000);
-
-    
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-    this.pointerDownPos = new THREE.Vector2();
-    
-    window.addEventListener('flyToDistrict', (e: any) => {
-        this.flyTo(e.detail.x, e.detail.z, 2000);
-    });
-    
-    window.addEventListener('clearBusStops', () => clearNearestStops(this.scene));
-
-    this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown.bind(this));
-    this.renderer.domElement.addEventListener('pointerup', this.onPointerUp.bind(this));
-    this.renderer.domElement.addEventListener('pointermove', this.onPointerMove.bind(this));
-  }
-
-  private onPointerDown(event: PointerEvent) {
-    this.pointerDownPos.set(event.clientX, event.clientY);
-  }
-
-  private onPointerUp(event: PointerEvent) {
-    const distance = Math.hypot(event.clientX - this.pointerDownPos.x, event.clientY - this.pointerDownPos.y);
-    if (distance > 5) return;
-    this.handleClick(event);
-  }
-
-  private onPointerMove(event: PointerEvent) {
-    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    
-    const visibleObjects = this.scene.children.filter(c => c.visible && c.type !== 'GridHelper' && c.name !== 'GroundPlane');
-    const intersects = this.raycaster.intersectObjects(visibleObjects, true);
-
-    if (intersects.length > 0) {
-      this.renderer.domElement.style.cursor = 'pointer';
-    } else {
-      this.renderer.domElement.style.cursor = 'default';
+        // FlyTo eventi
+        window.addEventListener('flyToDistrict', (e: any) => {
+            const { lat, lng } = e.detail; 
+            if (this.map && lat && lng) {
+                this.map.flyTo({ center: [lng, lat], zoom: 15, pitch: 60 });
+            }
+        });
     }
-  }
 
-  private handleClick(event: MouseEvent) {
-    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    private initMapLibre(container: HTMLDivElement) {
+        const pureStyle = {
+            "version": 8,
+            "sources": {
+                "esri-satellite": {
+                    "type": "raster",
+                    "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+                    "tileSize": 256,
+                    "maxzoom": 19,
+                    "attribution": "© Esri"
+                },
+                "openfreemap-vector": {
+                    "type": "vector",
+                    "url": "https://tiles.openfreemap.org/planet"
+                }
+            },
+            "layers": [
+                {
+                    "id": "background-layer",
+                    "type": "background",
+                    "paint": { "background-color": "#f2efe6" }
+                },
+                {
+                    "id": "esri-satellite-layer",
+                    "type": "raster",
+                    "source": "esri-satellite",
+                    "paint": { "raster-opacity": 1.0 }
+                },
+                {
+                    "id": "3d-buildings",
+                    "type": "fill-extrusion",
+                    "source": "openfreemap-vector",
+                    "source-layer": "building",
+                    "minzoom": 13,
+                    "paint": {
+                        "fill-extrusion-color": [
+                            "interpolate", ["linear"], ["get", "render_height"],
+                            0, "#e6ded0", 10, "#dcd3c4", 24, "#d2c9ba", 40, "#c7bfb0"
+                        ],
+                        "fill-extrusion-height": ["coalesce", ["get", "render_height"], 8],
+                        "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+                        "fill-extrusion-opacity": 0.8,
+                        "fill-extrusion-vertical-gradient": true
+                    }
+                }
+            ]
+        };
 
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    
-    const visibleObjects = this.scene.children.filter(c => c.visible && c.type !== 'GridHelper');
-    const intersects = this.raycaster.intersectObjects(visibleObjects, true);
+        this.map = new maplibregl.Map({
+            container: container.id,
+            style: pureStyle as any,
+            center: [KONAK_CENTER.lng, KONAK_CENTER.lat],
+            zoom: 13,
+            pitch: 60,
+            bearing: -20,
+            maxPitch: 85,
+            antialias: true
+        });
 
-    if (intersects.length > 0) {
-      const hitObj = intersects.find(i => i.object.name !== 'GroundPlane');
-      
-      // Ilce topuna tiklandiginda ucusa gec
-      if (hitObj && hitObj.object.userData?.isDistrict) {
-          const ud = hitObj.object.userData;
-          this.flyTo(ud.targetX, ud.targetZ, 2500);
-          return;
-      }
+        this.map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
-      
-      if (hitObj) {
-        if (hitObj.object.name === 'TargetPin') return;
+        this.map.on('style.load', () => {
+            this.addThreeJSLayer();
+            this.setupInteractions();
+        });
 
-        const obj = hitObj.object as any;
-        let record = null;
-
-        if (obj.isInstancedMesh && obj.userData.records) {
-          const idx = hitObj.instanceId;
-          if (idx !== undefined) record = obj.userData.records[idx];
-        } else {
-          record = obj.userData?.record;
-        }
-
-        if (record) {
-          const name = record.ADI || record.adi || record.AD || record.TesisAdi || "İsimsiz Nokta";
-          const type = obj.userData.layerName || "Kayıt";
-          const ilce = record.ILCE || record.ilce || record.Ilce || "-";
-          
-          const html = `
-            <div style="font-size: 11px; color: #00aaff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">${type}</div>
-            <div style="font-size: 15px; font-weight: bold; margin-bottom: 8px;">${name}</div>
-            <div style="font-size: 12px; color: #ccc;">İlçe/Mesafe: ${ilce}</div>
-          `;
-          
-          UIManager.showInfo(html, event); // Clean UI cagrisi
-          return;
-        }
-      } else {
-        const groundHit = intersects.find(i => i.object.name === 'GroundPlane');
-        if (groundHit && UIManager.busStopMode) {
-          fetchNearestStops(this.scene, groundHit.point.x, groundHit.point.z);
-        }
-      }
+        // ESHOT Tiklama (Raycaster yerine MapLibre click kullanarak koordinatlari alacagiz)
+        this.map.on('click', (e) => {
+            const { UIManager } = require('../ui/UIManager');
+            const { fetchNearestStops } = require('../layers/OtobusDuraklariLayer');
+            const { convertGpsToVector } = require('../utils/coordinates');
+            
+            if (UIManager && UIManager.busStopMode) {
+                const [x, y, z] = convertGpsToVector(e.lngLat.lat, e.lngLat.lng);
+                fetchNearestStops(this.scene, x, z);
+            }
+        });
+        
+        // DistrictManager guncellemelerini map render dongusune baglayalim
+        this.map.on('render', () => {
+            if (this.districtManager) {
+                // Kamera irtifasini harita zoom'undan tahmini hesapla (13 -> ~5000m, 17 -> ~500m)
+                // LOD icin tahmini bir altitude degeri gonderiyoruz
+                const zoom = this.map!.getZoom();
+                const fakeAltitude = Math.max(0, (17 - zoom) * 800); 
+                
+                // DistrictManager icindeki kamera referansina suni bir pozisyon verelim ki LOD calissin
+                this.camera.position.y = fakeAltitude;
+                this.districtManager.update();
+            }
+        });
     }
-    
-    UIManager.hideInfo();
-  }
 
-  private onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-  }
+    private addThreeJSLayer() {
+        const engine = this;
+        
+        const modelOrigin = [KONAK_CENTER.lng, KONAK_CENTER.lat];
+        const merc = maplibregl.MercatorCoordinate.fromLngLat(modelOrigin, 0);
+        const scale = merc.meterInMercatorCoordinateUnits();
 
-  
-  
+        const customLayer: maplibregl.CustomLayerInterface = {
+            id: '3d-model',
+            type: 'custom',
+            renderingMode: '3d',
+            onAdd: function (map, gl) {
+                engine.renderer = new THREE.WebGLRenderer({
+                    canvas: map.getCanvas(),
+                    context: gl,
+                    antialias: true
+                });
+                engine.renderer.autoClear = false;
+            },
+            render: function (gl, matrix) {
+                if (!engine.renderer) return;
 
-  
-  private flyTo(targetX: number, targetZ: number, targetY: number) {
-      const startX = this.controls.target.x;
-      const startZ = this.controls.target.z;
-      const startCamX = this.camera.position.x;
-      const startCamY = this.camera.position.y;
-      const startCamZ = this.camera.position.z;
-      
-      const endCamX = targetX;
-      const endCamZ = targetZ + 600; 
-      
-      let progress = 0;
-      const animateFly = () => {
-          progress += 0.025; // Ucus hizi
-          if (progress > 1) progress = 1;
-          
-          const ease = 1 - Math.pow(1 - progress, 3); // Yavaslayarak durma efekti
-          
-          this.controls.target.x = startX + (targetX - startX) * ease;
-          this.controls.target.z = startZ + (targetZ - startZ) * ease;
-          
-          this.camera.position.x = startCamX + (endCamX - startCamX) * ease;
-          this.camera.position.y = startCamY + (targetY - startCamY) * ease;
-          this.camera.position.z = startCamZ + (endCamZ - startCamZ) * ease;
-          
-          this.controls.update(); // Update cagrildigi an DistrictManager da tetiklenir!
-          
-          if (progress < 1) {
-              requestAnimationFrame(animateFly);
-          }
-      };
-      animateFly();
-  }
+                const m = new THREE.Matrix4().fromArray(matrix);
 
+                const l = new THREE.Matrix4()
+                    .makeTranslation(merc.x, merc.y, merc.z)
+                    .scale(new THREE.Vector3(scale, scale, scale));
+                
+                const axisSwap = new THREE.Matrix4();
+                axisSwap.set(
+                    1, 0, 0, 0,
+                    0, 0, 1, 0,
+                    0, 1, 0, 0,
+                    0, 0, 0, 1
+                );
+                l.multiply(axisSwap);
 
-  public start() {
-    const animate = () => {
-      requestAnimationFrame(animate);
-      this.controls.update();
-      this.renderer.render(this.scene, this.camera);
-    };
-    animate();
-  }
+                engine.camera.projectionMatrix = m.multiply(l);
+                
+                engine.renderer.state.reset();
+                engine.renderer.render(engine.scene, engine.camera);
+                map.triggerRepaint();
+            }
+        };
+
+        this.map!.addLayer(customLayer);
+    }
+
+    private raycaster = new THREE.Raycaster();
+    private mouse = new THREE.Vector2();
+    private pointerDownPos = new THREE.Vector2();
+
+    private setupInteractions() {
+        if (!this.map) return;
+        const canvas = this.map.getCanvasContainer();
+        
+        canvas.addEventListener('pointerdown', (e) => {
+            this.pointerDownPos.set(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            
+            const visibleObjects = this.scene.children.filter(c => c.visible && c.type !== 'GridHelper' && c.name !== 'GroundPlane');
+            const intersects = this.raycaster.intersectObjects(visibleObjects, true);
+
+            if (intersects.length > 0) {
+                canvas.style.cursor = 'pointer';
+            } else {
+                canvas.style.cursor = '';
+            }
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            const distance = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);
+            if (distance > 5) return;
+            
+            const { UIManager } = require('../ui/UIManager');
+            this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            
+            const visibleObjects = this.scene.children.filter(c => c.visible && c.type !== 'GridHelper' && c.name !== 'GroundPlane');
+            const intersects = this.raycaster.intersectObjects(visibleObjects, true);
+            
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                let obj = hit.object;
+                
+                // InstancedMesh icin
+                if (obj.type === 'InstancedMesh' && obj.userData.records) {
+                    const inst = obj as THREE.InstancedMesh;
+                    const record = inst.userData.records[hit.instanceId!];
+                    if (record) {
+                        const html = `
+                            <div style="font-size:14px; margin-bottom:5px; color:#ff9900; font-weight:bold;">
+                                ${obj.userData.layerName || 'Detay'}
+                            </div>
+                            <div style="font-size:12px;">${record.ADI || record.Adi || 'Bilinmeyen'}</div>
+                        `;
+                        UIManager.showInfo(html, e as MouseEvent);
+                        return;
+                    }
+                }
+                
+                // Normal Mesh veya Sprite
+                if (obj.userData && obj.userData.isDistrict) {
+                    window.dispatchEvent(new CustomEvent('flyToDistrict', { 
+                        detail: { lat: obj.userData.lat, lng: obj.userData.lng, x: obj.userData.targetX, z: obj.userData.targetZ } 
+                    }));
+                } else if (obj.userData && obj.userData.record) {
+                    const record = obj.userData.record;
+                    const html = `
+                        <div style="font-size:14px; margin-bottom:5px; color:#ff9900; font-weight:bold;">
+                            ${obj.userData.layerName || 'Detay'}
+                        </div>
+                        <div style="font-size:12px;">${record.ADI || record.Adi || 'Bilinmeyen'}</div>
+                    `;
+                    UIManager.showInfo(html, e as MouseEvent);
+                }
+            } else {
+                UIManager.hideInfo();
+            }
+        });
+    }
+
 }
