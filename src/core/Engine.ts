@@ -23,11 +23,17 @@ export class Engine {
         // PerspectiveCamera — projection matrix MapLibre tarafindan her frame ezilecek
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1e8);
 
-        // Isik
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
         const dir = new THREE.DirectionalLight(0xffffff, 0.6);
         dir.position.set(1000, 3000, 1000);
         this.scene.add(dir);
+
+        // DEV KÜP: GÖRÜNÜRLÜK TESTİ İÇİN
+        const cubeGeo = new THREE.BoxGeometry(500, 500, 500); // 500 metre çapında dev bir küp
+        const cubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }); // Derinlik testi kapalı, her şeyin üstünde olmalı
+        const devKup = new THREE.Mesh(cubeGeo, cubeMat);
+        devKup.position.set(0, 0, 0); // Konak Merkez
+        this.scene.add(devKup);
 
         // Eski canvas varsa gizle, MapLibre kendi canvas'ini olusturacak
         const oldCanvas = document.querySelector('canvas');
@@ -53,26 +59,25 @@ export class Engine {
     public start() { /* MapLibre event loop ile yonetiliyor */ }
 
     private initMapLibre(container: HTMLDivElement) {
-        const style: any = {
+        const style = {
             version: 8,
             sources: {
-                'esri-satellite': {
-                    type: 'raster',
-                    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-                    tileSize: 256,
-                    maxzoom: 19,
-                    attribution: '© Esri'
-                },
                 'ofm': {
                     type: 'vector',
-                    url: 'https://tiles.openfreemap.org/planet'
+                    tiles: ['https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf'],
+                    maxzoom: 14
                 }
             },
             layers: [
-                { id: 'bg', type: 'background', paint: { 'background-color': '#1a1a2e' } },
-                { id: 'satellite', type: 'raster', source: 'esri-satellite', paint: { 'raster-opacity': 1 } },
                 {
-                    id: '3d-buildings',
+                    id: 'background',
+                    type: 'background',
+                    paint: {
+                        'background-color': '#1a1a1a' // Koyu gri arkaplan
+                    }
+                },
+                {
+                    id: 'building',
                     type: 'fill-extrusion',
                     source: 'ofm',
                     'source-layer': 'building',
@@ -80,7 +85,7 @@ export class Engine {
                     paint: {
                         'fill-extrusion-color': [
                             'interpolate', ['linear'], ['get', 'render_height'],
-                            0, '#e6ded0', 10, '#dcd3c4', 24, '#d2c9ba', 40, '#c7bfb0'
+                            0, '#333333', 10, '#444444', 24, '#555555', 40, '#666666'
                         ],
                         'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
                         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
