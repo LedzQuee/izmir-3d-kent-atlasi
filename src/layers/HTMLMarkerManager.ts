@@ -9,7 +9,7 @@ export class HTMLMarkerManager {
     private map: maplibregl.Map;
     private supercluster: Supercluster;
     private markers: Map<string, maplibregl.Marker> = new Map();
-    private currentFeatures: any[] = [];
+    public currentFeatures: any[] = [];
     private spiderifiedClusterId: number | null = null;
     private activePointId: string | null = null;
     private lowZoomWarningShown: boolean = false;

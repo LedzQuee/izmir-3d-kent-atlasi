@@ -33,6 +33,7 @@ export class MapLibreLayerManager {
     static map: maplibregl.Map | null = null;
     static engine: Engine | null = null;
     static markerManager: HTMLMarkerManager | null = null;
+    static activeDistrict: string | null = null; // Aktif ilce filtresi
 
     static async init(engine: Engine) {
         this.engine = engine;
@@ -41,9 +42,21 @@ export class MapLibreLayerManager {
         
         this.markerManager = new HTMLMarkerManager(engine);
 
+        POI_LAYERS.forEach(c => this.activeLayerIds.add(c.id));
+
+        window.addEventListener('filterByDistrict', (e: any) => {
+            this.activeDistrict = e.detail; // Ilce adi veya null
+            this.updateData();
+            
+            if (this.activeDistrict) {
+                UIManager.showToast(`${this.activeDistrict} ilçesi verileri filtrelendi.`, false);
+            } else {
+                UIManager.showToast('Tüm İzmir verileri yükleniyor...', false);
+            }
+        });
+
         // Butun endpoint'lerden veri cek
         const featurePromises = POI_LAYERS.map(async (config) => {
-            this.activeLayerIds.add(config.id);
             try {
                 const res = await ApiService.get(config.endpoint);
                 const records = res?.onemliyer ?? [];
@@ -92,15 +105,26 @@ export class MapLibreLayerManager {
         if (!this.map) return;
         
         // Sadece aktif olan layerId'lere ait verileri filtrele
-        const filteredFeatures = this.allFeatures.filter(f => this.activeLayerIds.has(f.properties.layerId));
+        let filteredFeatures = this.allFeatures.filter(f => this.activeLayerIds.has(f.properties.layerId));
+        
+        // Eger bir ilce secildiyse diger ilceleri sistemden komple kaldir
+        if (this.activeDistrict) {
+            const target = this.activeDistrict.toLocaleUpperCase('tr-TR').trim();
+            filteredFeatures = filteredFeatures.filter(f => {
+                const rec = JSON.parse(f.properties.recordRaw);
+                const ilce = rec.ILCE || rec.Ilce || rec.ilce || '';
+                return ilce.toLocaleUpperCase('tr-TR').trim() === target;
+            });
+        }
         
         if (this.markerManager) {
             this.markerManager.updateData(filteredFeatures);
         }
         
-        // DistrictManager'a bildir
+        // DistrictManager'a bildir (TUM verileri gonderelim ki sagdaki ilce listesi sifirlanmasin)
+        const baseFeatures = this.allFeatures.filter(f => this.activeLayerIds.has(f.properties.layerId));
         window.dispatchEvent(new CustomEvent('poiDataUpdated', {
-            detail: { features: filteredFeatures }
+            detail: { features: baseFeatures }
         }));
     }
 }
