@@ -69,8 +69,8 @@ export class HTMLMarkerManager {
             this.activePointId = e.detail;
             document.querySelectorAll('.active-pulse').forEach(n => n.classList.remove('active-pulse'));
             
-            // Eğer ekranda ise doğrudan sınıfı ekle
-            const target = document.querySelector(`[data-poi-id="${this.activePointId}"]`);
+            // Eğer ekranda ise doğrudan sınıfı ekle (Syntax error onlemek icin ID kullaniyoruz)
+            const target = document.getElementById(this.activePointId!);
             if (target) {
                 target.classList.add('active-pulse');
             }
@@ -168,7 +168,7 @@ export class HTMLMarkerManager {
                         const color = leaf.properties!.color || '#00aaff';
                         const leafId = `point-${leaf.properties!.recordRaw}`;
                         
-                        dot.dataset.poiId = leafId;
+                        dot.id = leafId;
                         dot.style.cssText = `position:absolute; top:0; left:0; transform:translate(calc(-50% + ${x}px), calc(-50% + ${y}px)); width:24px; height:24px; border-radius:50%; background:${color}; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.4); z-index:3; transition:transform 0.2s;`;
                         
                         if (this.activePointId === leafId) {
@@ -255,7 +255,7 @@ export class HTMLMarkerManager {
                     el.style.justifyContent = 'center';
                     
                     const dot = document.createElement('div');
-                    dot.dataset.poiId = id;
+                    dot.id = id;
                     dot.style.cssText = `
                         width: 16px; height: 16px;
                         border-radius: 50%;

@@ -61,12 +61,9 @@ export class DistrictManager {
     }
 
     public update(zoom: number = 13) {
-
         // Ilce isimlerinin (Sprite) yakinlasinca kaybolmasi
-        // zoom > 13.5 -> saydamlasmaya baslar
-        // zoom > 14.5 -> tamamen kaybolur
-        const FADE_START_ZOOM = 13.5;
-        const FADE_END_ZOOM = 14.5;
+        const FADE_START_ZOOM = 11.5;
+        const FADE_END_ZOOM = 12.5;
 
         this.districtGroup.children.forEach(child => {
             if (child.type === 'Sprite') {
