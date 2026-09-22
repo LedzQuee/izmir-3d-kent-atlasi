@@ -12,12 +12,13 @@ export class HTMLMarkerManager {
     private currentFeatures: any[] = [];
     private spiderifiedClusterId: number | null = null;
     private activePointId: string | null = null;
+    private lowZoomWarningShown: boolean = false;
 
     constructor(engine: Engine) {
         this.map = engine.map!;
         
         this.supercluster = new Supercluster({
-            radius: 40,
+            radius: 75,
             maxZoom: CLUSTER_MAX_ZOOM
         });
         
@@ -96,8 +97,28 @@ export class HTMLMarkerManager {
     private updateMarkers() {
         if (!this.map) return;
 
+        const zoomObj = this.map.getZoom();
+        
+        // --- OPTIMIZASYON: Eger haritaya yeterince yaklasilmadiysa DOM marker'lari hic uretme ---
+        if (zoomObj < 12.5) {
+            if (this.markers.size > 0 || !this.lowZoomWarningShown) {
+                for (const [id, marker] of this.markers.entries()) {
+                    marker.remove();
+                }
+                this.markers.clear();
+                
+                if (!this.lowZoomWarningShown) {
+                    UIManager.showToast('Performans için detaylı noktalar gizlendi. Görmek için haritaya yaklaşın.', false);
+                    this.lowZoomWarningShown = true;
+                }
+            }
+            return;
+        } else {
+            this.lowZoomWarningShown = false; // Yaklasinca bayragi sifirla
+        }
+
         const bounds = this.map.getBounds();
-        const zoom = Math.floor(this.map.getZoom());
+        const zoom = Math.floor(zoomObj);
         
         const clusters = this.supercluster.getClusters([
             bounds.getWest(),
