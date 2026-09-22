@@ -22,6 +22,19 @@ export class HTMLMarkerManager {
         
         this.supercluster.load([]);
 
+        if (!document.getElementById('marker-animations')) {
+            const style = document.createElement('style');
+            style.id = 'marker-animations';
+            style.innerHTML = `
+                @keyframes marker-pulse {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    70% { transform: scale(3.5); opacity: 0; }
+                    100% { transform: scale(3.5); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
         this.map.on('move', () => this.updateMarkersSafe());
         this.map.on('moveend', () => this.updateMarkersSafe());
         
@@ -169,12 +182,44 @@ export class HTMLMarkerManager {
                     };
                 } else {
                     // --- TEKIL NOKTA ---
-                    el.style.width = '20px';
-                    el.style.height = '20px';
-                    el.style.borderRadius = '50%';
-                    el.style.background = cluster.properties.color || '#00aaff';
-                    el.style.border = '2px solid #ffffff';
-                    el.style.boxShadow = '0 0 8px rgba(0,0,0,0.4)';
+                    const color = cluster.properties.color || '#00aaff';
+                    
+                    // Dis kapsayici (MapLibre'nin transform cakismlerini onlemek icin)
+                    el.style.width = '24px';
+                    el.style.height = '24px';
+                    el.style.display = 'flex';
+                    el.style.alignItems = 'center';
+                    el.style.justifyContent = 'center';
+                    
+                    // Icerideki renkli daire
+                    const dot = document.createElement('div');
+                    dot.style.cssText = `
+                        width: 16px; height: 16px;
+                        border-radius: 50%;
+                        background: ${color};
+                        border: 2px solid #ffffff;
+                        box-shadow: 0 0 8px rgba(0,0,0,0.4);
+                        position: relative;
+                        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    `;
+                    
+                    // Disariya yayilan nefes alma (pulse) dalgasi
+                    const pulse = document.createElement('div');
+                    pulse.style.cssText = `
+                        position: absolute;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        border-radius: 50%;
+                        background: ${color};
+                        z-index: -1;
+                        animation: marker-pulse 2s infinite ease-out;
+                    `;
+                    
+                    dot.appendChild(pulse);
+                    el.appendChild(dot);
+                    
+                    // Hover etkilesimi
+                    el.onmouseenter = () => dot.style.transform = 'scale(1.4)';
+                    el.onmouseleave = () => dot.style.transform = 'scale(1)';
 
                     el.onclick = (e) => {
                         e.stopPropagation();
