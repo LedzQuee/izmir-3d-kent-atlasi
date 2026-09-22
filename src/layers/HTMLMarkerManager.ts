@@ -11,6 +11,7 @@ export class HTMLMarkerManager {
     private markers: Map<string, maplibregl.Marker> = new Map();
     private currentFeatures: any[] = [];
     private spiderifiedClusterId: number | null = null;
+    private activePointId: string | null = null;
 
     constructor(engine: Engine) {
         this.map = engine.map!;
@@ -39,10 +40,23 @@ export class HTMLMarkerManager {
         this.map.on('moveend', () => this.updateMarkersSafe());
         
         this.map.on('click', () => {
+            let needsUpdate = false;
             if (this.spiderifiedClusterId !== null) {
                 this.spiderifiedClusterId = null;
+                needsUpdate = true;
+            }
+            if (this.activePointId !== null) {
+                this.activePointId = null;
+                needsUpdate = true;
+            }
+            if (needsUpdate) {
                 this.updateMarkersSafe();
             }
+        });
+
+        window.addEventListener('poiSelected', (e: any) => {
+            this.activePointId = e.detail;
+            this.updateMarkersSafe();
         });
     }
 
@@ -50,6 +64,7 @@ export class HTMLMarkerManager {
         this.currentFeatures = features;
         this.supercluster.load(features);
         this.spiderifiedClusterId = null;
+        this.activePointId = null;
         this.updateMarkersSafe();
     }
 
@@ -183,6 +198,7 @@ export class HTMLMarkerManager {
                 } else {
                     // --- TEKIL NOKTA ---
                     const color = cluster.properties.color || '#00aaff';
+                    const isActive = this.activePointId === id;
                     
                     // Dis kapsayici (MapLibre'nin transform cakismlerini onlemek icin)
                     el.style.width = '24px';
@@ -203,18 +219,20 @@ export class HTMLMarkerManager {
                         transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
                     `;
                     
-                    // Disariya yayilan nefes alma (pulse) dalgasi
-                    const pulse = document.createElement('div');
-                    pulse.style.cssText = `
-                        position: absolute;
-                        top: 0; left: 0; right: 0; bottom: 0;
-                        border-radius: 50%;
-                        background: ${color};
-                        z-index: -1;
-                        animation: marker-pulse 2s infinite ease-out;
-                    `;
+                    if (isActive) {
+                        // Sadece seciliyken disariya yayilan nefes alma (pulse) dalgasi
+                        const pulse = document.createElement('div');
+                        pulse.style.cssText = `
+                            position: absolute;
+                            top: 0; left: 0; right: 0; bottom: 0;
+                            border-radius: 50%;
+                            background: ${color};
+                            z-index: -1;
+                            animation: marker-pulse 2s infinite ease-out;
+                        `;
+                        dot.appendChild(pulse);
+                    }
                     
-                    dot.appendChild(pulse);
                     el.appendChild(dot);
                     
                     // Hover etkilesimi
@@ -223,6 +241,10 @@ export class HTMLMarkerManager {
 
                     el.onclick = (e) => {
                         e.stopPropagation();
+                        
+                        this.activePointId = id;
+                        this.updateMarkersSafe();
+
                         try {
                             const rec = JSON.parse(cluster.properties.recordRaw);
                             UIManager.showMultiInfo([{

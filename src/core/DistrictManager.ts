@@ -352,6 +352,12 @@ export class DistrictManager {
                             searchResults.style.display = 'none';
                             searchInput.value = '';
                             const coords = f.geometry.coordinates;
+                            
+                            // Arama kismindan secileni vurgulamak (pulse) icin event firlat
+                            const recordRaw = f.properties.recordRaw;
+                            const id = `point-${recordRaw}`;
+                            window.dispatchEvent(new CustomEvent('poiSelected', { detail: id }));
+
                             // @ts-ignore
                             window.engineInstance?.map?.flyTo({ center: coords, zoom: 18, pitch: 60 });
                             // @ts-ignore
