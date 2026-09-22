@@ -20,16 +20,26 @@ export async function fetchNearestStops(scene: THREE.Scene, hitX: number, hitZ: 
     
     currentBusStopsGroup = new THREE.Group();
     
-    // Tıklanan yere 3D hedef pini koy
-    const [, yCenter, ] = convertGpsToVector(lat, lng);
-    const pinGeo = new THREE.ConeGeometry(15, 80, 8);
-    const pinMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const pin = new THREE.Mesh(pinGeo, pinMat);
-    pin.position.set(hitX, yCenter + 25, hitZ);
-    pin.rotation.x = Math.PI; 
-    pin.name = 'TargetPin'; 
-    currentBusStopsGroup.add(pin);
-    scene.add(currentBusStopsGroup);
+    // Tıklanan yere HTML hedef pini koy
+    // @ts-ignore
+    const map = window.engineInstance?.map;
+    if (!map) return;
+
+    const pinEl = document.createElement('div');
+    pinEl.innerHTML = `
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+        <circle cx="12" cy="10" r="3"></circle>
+      </svg>
+    `;
+    pinEl.style.cssText = `
+        display: flex; align-items: center; justify-content: center;
+        filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6));
+    `;
+    const pinMarker = new maplibregl.Marker({ element: pinEl, offset: [0, -16] })
+        .setLngLat([lng, lat])
+        .addTo(map);
+    currentBusMarkers.push(pinMarker);
 
     if (Array.isArray(records) && records.length > 0) {
       records.sort((a, b) => parseFloat(a.mesafe) - parseFloat(b.mesafe));
@@ -43,10 +53,6 @@ export async function fetchNearestStops(scene: THREE.Scene, hitX: number, hitZ: 
       } else {
         stopsToRender = records.filter(durak => parseFloat(durak.mesafe) <= 2000);
       }
-
-      // @ts-ignore
-      const map = window.engineInstance?.map;
-      if (!map) return;
 
       const color = '#00ffaa'; // ESHOT rengi
 

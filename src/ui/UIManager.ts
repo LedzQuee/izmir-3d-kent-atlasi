@@ -118,10 +118,19 @@ export class UIManager {
             name = `${name} (${ilce})`;
         }
         
+        let extraHtml = '';
+        if (r['DURAK NO']) {
+            extraHtml += `<span style="margin-left: 14px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,0.2); color:#94a3b8; font-size:13px;">No: <strong style="color:#f8fafc;">${r['DURAK NO']}</strong></span>`;
+        }
+        if (r.MESAFE) {
+            extraHtml += `<span style="margin-left: 14px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,0.2); color:#fbbf24; font-size:13px;">Uzaklık: <strong style="color:#f8fafc;">${r.MESAFE}</strong></span>`;
+        }
+        
         let html = `
             <div style="display:flex; align-items:center; gap: 12px;">
                 <span style="color:${poi.color};font-weight:600;">${poi.layerName}:</span>
                 <span style="color:#f8fafc;font-weight:500;font-size:14px">${name}</span>
+                ${extraHtml}
         `;
 
         if (this.activePoiList.length > 1) {
