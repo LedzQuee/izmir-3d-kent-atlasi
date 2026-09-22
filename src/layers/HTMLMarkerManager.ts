@@ -32,6 +32,15 @@ export class HTMLMarkerManager {
                     70% { transform: scale(3.5); opacity: 0; }
                     100% { transform: scale(3.5); opacity: 0; }
                 }
+                .active-pulse::after {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    border-radius: 50%;
+                    background: inherit;
+                    z-index: -1;
+                    animation: marker-pulse 2s infinite ease-out;
+                }
             `;
             document.head.appendChild(style);
         }
@@ -47,7 +56,8 @@ export class HTMLMarkerManager {
             }
             if (this.activePointId !== null) {
                 this.activePointId = null;
-                needsUpdate = true;
+                document.querySelectorAll('.active-pulse').forEach(n => n.classList.remove('active-pulse'));
+                // needsUpdate = true; // Sadece class kaldiriyoruz, tam re-render gerekmez
             }
             if (needsUpdate) {
                 this.updateMarkersSafe();
@@ -56,7 +66,13 @@ export class HTMLMarkerManager {
 
         window.addEventListener('poiSelected', (e: any) => {
             this.activePointId = e.detail;
-            this.updateMarkersSafe();
+            document.querySelectorAll('.active-pulse').forEach(n => n.classList.remove('active-pulse'));
+            
+            // Eğer ekranda ise doğrudan sınıfı ekle
+            const target = document.querySelector(`[data-poi-id="${this.activePointId}"]`);
+            if (target) {
+                target.classList.add('active-pulse');
+            }
         });
     }
 
@@ -129,13 +145,25 @@ export class HTMLMarkerManager {
 
                         const dot = document.createElement('div');
                         const color = leaf.properties!.color || '#00aaff';
+                        const leafId = `point-${leaf.properties!.recordRaw}`;
+                        
+                        dot.dataset.poiId = leafId;
                         dot.style.cssText = `position:absolute; top:0; left:0; transform:translate(calc(-50% + ${x}px), calc(-50% + ${y}px)); width:24px; height:24px; border-radius:50%; background:${color}; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.4); z-index:3; transition:transform 0.2s;`;
                         
+                        if (this.activePointId === leafId) {
+                            dot.classList.add('active-pulse');
+                        }
+
                         dot.onmouseenter = () => { dot.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(1.3)`; };
                         dot.onmouseleave = () => { dot.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(1)`; };
                         
                         dot.onclick = (e) => {
                             e.stopPropagation();
+                            
+                            this.activePointId = leafId;
+                            document.querySelectorAll('.active-pulse').forEach(n => n.classList.remove('active-pulse'));
+                            dot.classList.add('active-pulse');
+
                             try {
                                 const rec = JSON.parse(leaf.properties!.recordRaw);
                                 UIManager.showMultiInfo([{
@@ -198,17 +226,15 @@ export class HTMLMarkerManager {
                 } else {
                     // --- TEKIL NOKTA ---
                     const color = cluster.properties.color || '#00aaff';
-                    const isActive = this.activePointId === id;
                     
-                    // Dis kapsayici (MapLibre'nin transform cakismlerini onlemek icin)
                     el.style.width = '24px';
                     el.style.height = '24px';
                     el.style.display = 'flex';
                     el.style.alignItems = 'center';
                     el.style.justifyContent = 'center';
                     
-                    // Icerideki renkli daire
                     const dot = document.createElement('div');
+                    dot.dataset.poiId = id;
                     dot.style.cssText = `
                         width: 16px; height: 16px;
                         border-radius: 50%;
@@ -219,23 +245,12 @@ export class HTMLMarkerManager {
                         transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
                     `;
                     
-                    if (isActive) {
-                        // Sadece seciliyken disariya yayilan nefes alma (pulse) dalgasi
-                        const pulse = document.createElement('div');
-                        pulse.style.cssText = `
-                            position: absolute;
-                            top: 0; left: 0; right: 0; bottom: 0;
-                            border-radius: 50%;
-                            background: ${color};
-                            z-index: -1;
-                            animation: marker-pulse 2s infinite ease-out;
-                        `;
-                        dot.appendChild(pulse);
+                    if (this.activePointId === id) {
+                        dot.classList.add('active-pulse');
                     }
                     
                     el.appendChild(dot);
                     
-                    // Hover etkilesimi
                     el.onmouseenter = () => dot.style.transform = 'scale(1.4)';
                     el.onmouseleave = () => dot.style.transform = 'scale(1)';
 
@@ -243,7 +258,8 @@ export class HTMLMarkerManager {
                         e.stopPropagation();
                         
                         this.activePointId = id;
-                        this.updateMarkersSafe();
+                        document.querySelectorAll('.active-pulse').forEach(n => n.classList.remove('active-pulse'));
+                        dot.classList.add('active-pulse');
 
                         try {
                             const rec = JSON.parse(cluster.properties.recordRaw);
