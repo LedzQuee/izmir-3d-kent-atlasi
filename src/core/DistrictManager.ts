@@ -312,8 +312,30 @@ export class DistrictManager {
             
             searchTimeout = setTimeout(() => {
                 // @ts-ignore
-                const allFeatures = window.engineInstance?.htmlMarkerManager?.currentFeatures || window.allMapLibreFeatures || [];
-                const matches = allFeatures.filter((f: any) => f.properties.recordName.toLowerCase().includes(query));
+                const allFeatures = window.allMapLibreFeatures || [];
+                
+                // --- EKRANA GORE FILTRELEME (VIEWPORT FILTER) ---
+                // Eger zoom > 12.5 ise sadece ekranda gorunen alandaki verileri arar
+                // @ts-ignore
+                const map = window.engineInstance?.map;
+                const zoom = map ? map.getZoom() : 0;
+                const bounds = map ? map.getBounds() : null;
+
+                const matches = allFeatures.filter((f: any) => {
+                    // Isim eslesmiyor ise direk ele
+                    if (!f.properties.recordName.toLowerCase().includes(query)) return false;
+                    
+                    // Yakindayken Bounding Box kontrolu
+                    if (bounds && zoom >= 12.5) {
+                        const [lng, lat] = f.geometry.coordinates;
+                        if (lng < bounds.getWest() || lng > bounds.getEast() ||
+                            lat < bounds.getSouth() || lat > bounds.getNorth()) {
+                            return false; // Ekran disinda, ele!
+                        }
+                    }
+                    
+                    return true;
+                });
                 
                 // Akilli siralama: Tam eslesenleri veya kelime olarak eslesenleri basa al
                 matches.sort((a: any, b: any) => {
@@ -387,31 +409,6 @@ export class DistrictManager {
         });
         // --- ARAMA KUTUSU BITIS ---
 
-        // --- TUM IZMIR BUTONU ---
-        const clearFilterBtn = document.createElement('div');
-        clearFilterBtn.style.cssText = `
-            padding: 10px 14px;
-            margin: 10px 14px 0 14px;
-            background: rgba(59, 130, 246, 0.2);
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            border-radius: 8px;
-            color: #93c5fd;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-        `;
-        clearFilterBtn.innerHTML = '🌍 Tüm İzmir\'i Göster';
-        clearFilterBtn.onmouseenter = () => clearFilterBtn.style.background = 'rgba(59, 130, 246, 0.3)';
-        clearFilterBtn.onmouseleave = () => clearFilterBtn.style.background = 'rgba(59, 130, 246, 0.2)';
-        clearFilterBtn.onclick = () => {
-            window.dispatchEvent(new CustomEvent('filterByDistrict', { detail: null }));
-            // Haritayi Izmir geneline ucur
-            window.engineInstance?.map?.flyTo({ center: [27.1428, 38.4237], zoom: 10, pitch: 0 });
-        };
-        container.appendChild(clearFilterBtn);
-
         const listArea = document.createElement('div');
         listArea.id = 'district-rows';
         listArea.style.cssText = `flex:1;overflow-y:auto;padding:10px 14px;`;
@@ -439,8 +436,6 @@ export class DistrictManager {
                 const target = this.districtsData.find(d => d.name === name);
                 if (target) {
                     window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { lat: target.lat, lng: target.lng } }));
-                    // Sadece secilen ilceyi filtrele
-                    window.dispatchEvent(new CustomEvent('filterByDistrict', { detail: name }));
                 }
             };
             const nameEl = document.createElement('span');
