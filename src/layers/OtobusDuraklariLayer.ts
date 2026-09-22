@@ -41,17 +41,41 @@ export async function fetchNearestStops(scene: THREE.Scene, hitX: number, hitZ: 
         .addTo(map);
     currentBusMarkers.push(pinMarker);
 
+    // Mesafe hesaplamak icin gercek Haversine algoritmasi (API verisine guvenmiyoruz)
+    function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const R = 6371e3;
+        const p1 = lat1 * Math.PI/180;
+        const p2 = lat2 * Math.PI/180;
+        const dp = (lat2-lat1) * Math.PI/180;
+        const dl = (lon1-lon2) * Math.PI/180;
+        const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
     if (Array.isArray(records) && records.length > 0) {
-      records.sort((a, b) => parseFloat(a.mesafe) - parseFloat(b.mesafe));
+      // API'nin 'mesafe' degerini tamamen ezip gercek kus ucusu mesafeyi hesapliyoruz
+      records.forEach(r => {
+        const dLat = parseFloat(r.enlem);
+        const dLng = parseFloat(r.boylam);
+        if (!isNaN(dLat) && !isNaN(dLng)) {
+           r.gercekMesafe = getDistanceMeters(lat, lng, dLat, dLng);
+        } else {
+           r.gercekMesafe = 999999;
+        }
+      });
+
+      // Kendi hesapladigimiz degere gore siralayalim
+      records.sort((a, b) => a.gercekMesafe - b.gercekMesafe);
       
       let stopsToRender = [];
-      const closestDistance = Math.round(parseFloat(records[0].mesafe));
+      const closestDistance = Math.round(records[0].gercekMesafe);
 
       if (closestDistance > 2000) {
         UIManager.showToast(`2 KM yakınınızda durak bulunmamaktadır! En yakın: ${closestDistance}m`, true);
         stopsToRender = [records[0]];
       } else {
-        stopsToRender = records.filter(durak => parseFloat(durak.mesafe) <= 2000);
+        stopsToRender = records.filter(durak => durak.gercekMesafe <= 2000);
       }
 
       const color = '#00ffaa'; // ESHOT rengi
@@ -95,7 +119,7 @@ export async function fetchNearestStops(scene: THREE.Scene, hitX: number, hitZ: 
               UIManager.showMultiInfo([{
                   layerName: 'Yakın Otobüs Durağı',
                   color: color,
-                  record: { ADI: durak.adi, 'DURAK NO': durak.durakId, MESAFE: Math.round(durak.mesafe) + "m" }
+                  record: { ADI: durak.adi, 'DURAK NO': durak.durakId, MESAFE: Math.round(durak.gercekMesafe) + "m" }
               }]);
           };
 
