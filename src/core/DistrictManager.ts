@@ -140,7 +140,16 @@ export class DistrictManager {
             });
 
             const sprite = new THREE.Sprite(spriteMat);
-            sprite.position.set(x, 400, z); // Gokyuzunde asili durur (Yerden yuksekte) // Havada hafif suzulur
+            
+            // Gercek arazi yuksekligini sorgula
+            const map = (window as any).engineInstance?.map;
+            let elevation = 0;
+            if (map && map.queryTerrainElevation) {
+                elevation = map.queryTerrainElevation([d.lng, d.lat]) || 0;
+            }
+            // 400 metre + arazinin yuksekligi (dagin icine girmesini onler)
+            sprite.position.set(x, 400 + (elevation * 1.5), z);
+            
             sprite.scale.set(1500, 320, 1);
             sprite.userData = targetData;
             

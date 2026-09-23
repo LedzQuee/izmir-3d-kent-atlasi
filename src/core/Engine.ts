@@ -71,6 +71,11 @@ export class Engine {
                 'ofm': {
                     type: 'vector',
                     url: 'https://tiles.openfreemap.org/planet'
+                },
+                'terrain-source': {
+                    type: 'raster-dem',
+                    url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+                    tileSize: 256
                 }
             },
             layers: [
@@ -85,15 +90,22 @@ export class Engine {
                     paint: {
                         'fill-extrusion-color': [
                             'interpolate', ['linear'], ['get', 'render_height'],
-                            0, '#e6ded0', 10, '#dcd3c4', 24, '#d2c9ba', 40, '#c7bfb0'
+                            0, '#f8fafc', 
+                            15, '#e2e8f0', 
+                            30, '#cbd5e1', 
+                            50, '#94a3b8'
                         ],
-                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
+                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
                         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': 0.85,
+                        'fill-extrusion-opacity': 0.9,
                         'fill-extrusion-vertical-gradient': true
                     }
                 }
-            ]
+            ],
+            terrain: {
+                source: 'terrain-source',
+                exaggeration: 1.5 // Tepeleri ve daglari daha belirginlestirir
+            }
         };
 
         this.map = new (maplibregl.Map as any)({
