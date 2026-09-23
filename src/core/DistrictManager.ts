@@ -87,32 +87,46 @@ export class DistrictManager {
     }
 
 
-    private getIlceFromRecord(rec: any): string {
-        if (!rec) return 'DİĞER';
-        let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi || rec.IlceId || rec.ilceid;
-        if (!val && rec.ADI) {
-            const ad = String(rec.ADI).toLocaleUpperCase('tr-TR');
-            for (let d of this.districtsData) {
-                if (ad.includes(d.name)) return d.name;
-            }
-        }
-        if (typeof val !== 'string') return 'DİĞER';
-        val = val.toLocaleUpperCase('tr-TR').trim();
+    private getIlceFromRecord(rec: any, lat: number, lng: number): string {
+        let val = rec.ILCE || rec.Ilce || rec.ilce || rec.ILCE_ADI || rec.IlceAdi || rec.ilce_adi;
         
-        if (val.includes('KARŞI')) return 'KARŞIYAKA';
-        if (val.includes('KARABA')) return 'KARABAĞLAR';
-        if (val.includes('KEMALPA')) return 'KEMALPAŞA';
-        if (val.includes('GÜZELBA')) return 'GÜZELBAHÇE';
-        if (val.includes('BALÇOV')) return 'BALÇOVA';
-        if (val.includes('MENDER')) return 'MENDERES';
-        if (val.includes('SEFERİH')) return 'SEFERİHİSAR';
-        return val;
+        if (typeof val === 'string' && val.trim() !== '') {
+            val = val.toLocaleUpperCase('tr-TR').trim();
+            if (val.includes('KARŞI')) return 'KARŞIYAKA';
+            if (val.includes('KARABA')) return 'KARABAĞLAR';
+            if (val.includes('KEMALPA')) return 'KEMALPAŞA';
+            if (val.includes('GÜZELBA')) return 'GÜZELBAHÇE';
+            if (val.includes('BALÇOV')) return 'BALÇOVA';
+            if (val.includes('MENDER')) return 'MENDERES';
+            if (val.includes('SEFERİH')) return 'SEFERİHİSAR';
+            
+            const match = this.districtsData.find(d => d.name === val || val.includes(d.name));
+            if (match) return match.name;
+        }
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+            let closest = 'DİĞER';
+            let minDist = Infinity;
+            for (const d of this.districtsData) {
+                const dLat = (d.lat - lat) * 111;
+                const dLng = (d.lng - lng) * 87;
+                const dist = dLat * dLat + dLng * dLng;
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = d.name;
+                }
+            }
+            return closest;
+        }
+        return 'DİĞER';
     }
 
     private extractPointsFromFeatures(features: any[]) {
         const activeCounts = new Map<string, number>();
         features.forEach(f => {
-            const ilce = this.getIlceFromRecord(JSON.parse(f.properties.recordRaw));
+            const lat = f.geometry.coordinates[1];
+            const lng = f.geometry.coordinates[0];
+            const ilce = this.getIlceFromRecord(JSON.parse(f.properties.recordRaw), lat, lng);
             activeCounts.set(ilce, (activeCounts.get(ilce) || 0) + 1);
         });
 
