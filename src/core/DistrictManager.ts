@@ -236,17 +236,31 @@ export class DistrictManager {
     }
 
     private initRightHoverSidebar() {
-        const existing = document.getElementById('district-right-sidebar');
+        const existing = document.getElementById('district-right-wrapper');
         if (existing) existing.remove();
 
-        const container = document.createElement('div');
-        container.id = 'district-right-sidebar';
-        container.style.cssText = `
+        const oldSidebar = document.getElementById('district-right-sidebar');
+        if (oldSidebar) oldSidebar.remove();
+
+        const wrapper = document.createElement('div');
+        wrapper.id = 'district-right-wrapper';
+        wrapper.style.cssText = `
             position: fixed;
             right: 0px;
             top: 20px;
             bottom: 20px;
-            width: 300px;
+            width: 320px;
+            z-index: 500;
+            display: flex;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateX(0);
+        `;
+
+        const container = document.createElement('div');
+        container.id = 'district-right-sidebar';
+        container.style.cssText = `
+            width: 100%;
+            height: 100%;
             background: rgba(10, 14, 26, 0.85);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
@@ -255,10 +269,8 @@ export class DistrictManager {
             border-radius: 16px 0 0 16px;
             color: #f1f5f9;
             font-family: "Segoe UI", Roboto, sans-serif;
-            z-index: 500;
             display: flex;
             flex-direction: column;
-            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             box-shadow: -8px 0 32px rgba(0,0,0,0.5);
         `;
 
@@ -284,18 +296,22 @@ export class DistrictManager {
             line-height: 1;
             transition: all 0.2s ease;
             box-shadow: -4px 0 16px rgba(0,0,0,0.4);
+            border-left: 2px solid rgba(255,255,255,0.2);
         `;
         toggleBtn.innerHTML = '&#8250;';
         toggleBtn.onmouseenter = () => { toggleBtn.style.color = '#fff'; toggleBtn.style.background = 'rgba(30, 41, 59, 0.95)'; };
         toggleBtn.onmouseleave = () => { toggleBtn.style.color = '#94a3b8'; toggleBtn.style.background = 'rgba(10, 14, 26, 0.85)'; };
 
-        let open = false;
+        let open = true;
         toggleBtn.onclick = () => {
             open = !open;
-            container.style.right = open ? '0px' : '-300px';
+            wrapper.style.transform = open ? 'translateX(0)' : 'translateX(320px)';
             toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
         };
-        container.appendChild(toggleBtn);
+        
+        wrapper.appendChild(toggleBtn);
+        wrapper.appendChild(container);
+        document.body.appendChild(wrapper);
 
         const header = document.createElement('div');
         header.style.cssText = `padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;`;
@@ -319,7 +335,7 @@ export class DistrictManager {
         
         searchContainer.appendChild(searchInput);
         searchContainer.appendChild(searchResults);
-        header.appendChild(searchContainer); // Header'in alt kismina ekle
+        header.appendChild(searchContainer);
 
         let searchTimeout: any;
         searchInput.addEventListener('input', (e) => {
@@ -334,49 +350,35 @@ export class DistrictManager {
                 // @ts-ignore
                 const allFeatures = window.allMapLibreFeatures || [];
                 
-                // --- EKRANA GORE FILTİRELEME (VIEWPORT FILTER) ---
-                // Eger zoom > 12.5 ise sadece ekranda gorunen alandaki verileri arar
                 // @ts-ignore
                 const map = window.engineInstance?.map;
                 const zoom = map ? map.getZoom() : 0;
                 const bounds = map ? map.getBounds() : null;
 
                 const matches = allFeatures.filter((f: any) => {
-                    // Isim eslesmiyor ise direk ele
                     if (!f.properties.recordName.toLowerCase().includes(query)) return false;
-                    
-                    // Yakindayken Bounding Box kontrolu
                     if (bounds && zoom >= 12.5) {
                         const [lng, lat] = f.geometry.coordinates;
                         if (lng < bounds.getWest() || lng > bounds.getEast() ||
                             lat < bounds.getSouth() || lat > bounds.getNorth()) {
-                            return false; // Ekran disinda, ele!
+                            return false;
                         }
                     }
-                    
                     return true;
                 });
                 
-                // Akilli siralama: Tam eslesenleri veya kelime olarak eslesenleri basa al
                 matches.sort((a: any, b: any) => {
                     const nameA = a.properties.recordName.toLowerCase();
                     const nameB = b.properties.recordName.toLowerCase();
-                    
-                    // 1. Bastan baslama (Exact Prefix)
                     const startsA = nameA.startsWith(query);
                     const startsB = nameB.startsWith(query);
                     if (startsA && !startsB) return -1;
                     if (!startsA && startsB) return 1;
-                    
-                    // 2. Kelime basi eslesmesi (Orn: ' 5 ' vs '15')
-                    // Noktalama isaretlerini de bosluk gibi sayalim
                     const wordRegex = new RegExp(`(^|\\s|\\W)${query}(\\s|\\W|$)`);
                     const wordA = wordRegex.test(nameA);
                     const wordB = wordRegex.test(nameB);
                     if (wordA && !wordB) return -1;
                     if (!wordA && wordB) return 1;
-                    
-                    // 3. Normal alfabetik/numerik siralama
                     return nameA.localeCompare(nameB, 'tr-TR', { numeric: true });
                 });
                 
@@ -394,12 +396,9 @@ export class DistrictManager {
                             searchResults.style.display = 'none';
                             searchInput.value = '';
                             const coords = f.geometry.coordinates;
-                            
-                            // Arama kismindan secileni vurgulamak (pulse) icin event firlat
                             const recordRaw = f.properties.recordRaw;
                             const id = `point-${recordRaw}`;
                             window.dispatchEvent(new CustomEvent('poiSelected', { detail: id }));
-
                             // @ts-ignore
                             window.engineInstance?.map?.flyTo({ center: coords, zoom: 18, pitch: 60 });
                             // @ts-ignore
@@ -421,7 +420,6 @@ export class DistrictManager {
             }, 300);
         });
 
-        // Disari tiklaninca sonuclari gizle
         document.addEventListener('click', (e) => {
             if (!searchContainer.contains(e.target as Node)) {
                 searchResults.style.display = 'none';
@@ -431,10 +429,9 @@ export class DistrictManager {
 
         const listArea = document.createElement('div');
         listArea.id = 'district-rows';
-        listArea.style.cssText = `flex:1;overflow-y:auto;padding:10px 14px;`;
+        listArea.style.cssText = `flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 14px;`;
         listArea.innerHTML = `<style>#district-rows::-webkit-scrollbar{width:4px}#district-rows::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:4px}</style>`;
         container.appendChild(listArea);
-        document.body.appendChild(container);
     }
 
     private updateRightSidebarUI(counts: Map<string, number>) {
@@ -449,7 +446,7 @@ export class DistrictManager {
         sorted.forEach(([name, count]) => {
             if (count === 0) return;
             const row = document.createElement('div');
-            row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:3px;border-radius:8px;cursor:pointer;transition:background 0.15s;background:rgba(255,255,255,0.04);`;
+            row.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding:9px 10px; margin-bottom:3px; border-radius:8px; cursor:pointer; transition:background 0.15s; background:rgba(255,255,255,0.04); width:100%; box-sizing:border-box; overflow:hidden;`;
             row.onmouseenter = () => { row.style.background = 'rgba(99,179,237,0.12)'; };
             row.onmouseleave = () => { row.style.background = 'rgba(255,255,255,0.04)'; };
             row.onclick = () => {
@@ -458,12 +455,15 @@ export class DistrictManager {
                     window.dispatchEvent(new CustomEvent('flyToDistrict', { detail: { lat: target.lat, lng: target.lng } }));
                 }
             };
+            
             const nameEl = document.createElement('span');
             nameEl.textContent = name;
-            nameEl.style.cssText = 'font-size:12px;color:#cbd5e1;font-weight:500;';
+            nameEl.style.cssText = 'font-size:13px; color:#cbd5e1; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; margin-right:8px;';
+            
             const badge = document.createElement('span');
             badge.textContent = String(count);
-            badge.style.cssText = `background:rgba(99,179,237,0.15);color:#93c5fd;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid rgba(99,179,237,0.25);min-width:28px;text-align:center;`;
+            badge.style.cssText = `background:rgba(99,179,237,0.15); color:#93c5fd; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; border:1px solid rgba(99,179,237,0.25); min-width:32px; text-align:center; flex-shrink:0;`;
+            
             row.appendChild(nameEl);
             row.appendChild(badge);
             rowsContainer.appendChild(row);
