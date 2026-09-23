@@ -61,12 +61,12 @@ export class Engine {
             version: 8,
             glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
             sources: {
-                'esri-satellite': {
+                'google-satellite': {
                     type: 'raster',
-                    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                    tiles: ['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
                     tileSize: 256,
-                    maxzoom: 17, // 18 ve ustu zoomlarda Esri map data not available resmi dondurdugu icin 17 de sabitleyip resmi buyuturuz
-                    attribution: '(c) Esri'
+                    maxzoom: 21, // Google Satellite yuksek cozunurluk destekler
+                    attribution: '(c) Google'
                 },
                 'ofm': {
                     type: 'vector',
@@ -80,7 +80,7 @@ export class Engine {
             },
             layers: [
                 { id: 'bg', type: 'background', paint: { 'background-color': '#1a1a2e' } },
-                { id: 'satellite', type: 'raster', source: 'esri-satellite', paint: { 'raster-opacity': 1 } },
+                { id: 'satellite', type: 'raster', source: 'google-satellite', paint: { 'raster-opacity': 1 } },
                 {
                     id: '3d-buildings',
                     type: 'fill-extrusion',
