@@ -56,3 +56,21 @@ createLegend(legendItems as any);
 window.addEventListener('mapReady', (e: any) => {
     MapLibreLayerManager.init(e.detail.engine);
 }, { once: true });
+
+window.addEventListener('clearBusStops', () => { if (window.engineInstance) clearNearestStops(window.engineInstance.scene); });
+
+// Boşluğa (haritaya) tıklanınca bilgi popup'ını ve otobüs duraklarını temizle
+window.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    // Eğer tıklanan şey bir marker veya menü değilse temizle
+    if (!target.closest('.maplibregl-marker') && !target.closest('#legend-container') && !target.closest('#info-box') && target.tagName === 'CANVAS') {
+        if ((window as any).closeInfo) (window as any).closeInfo();
+    }
+});
+
+// ESC tuşu ile kapatma
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if ((window as any).closeInfo) (window as any).closeInfo();
+    }
+});

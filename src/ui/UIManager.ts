@@ -21,7 +21,7 @@ export class UIManager {
             z-index: 999999;
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            pointer-events: none;
+            pointer-events: auto;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
         `;
         document.body.appendChild(this.infoBox);
@@ -68,7 +68,7 @@ export class UIManager {
             opacity: 0;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             text-align: center;
-            pointer-events: none;
+            pointer-events: auto;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05);
             border-bottom: 3px solid transparent;
         `;
@@ -143,12 +143,21 @@ export class UIManager {
             `;
         }
         
-        html += `</div>`;
+                html += `
+            <button onclick="window.closeInfo()" style="margin-left:8px; background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; font-weight:bold; line-height:1; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                &times;
+            </button>
+        </div>`;
         this.showInfo(html);
     }
 
     static showInfo(html: string) {
+        if ((this as any).autoCloseTimeout) clearTimeout((this as any).autoCloseTimeout);
         this.infoBox.innerHTML = html;
+        
+        (this as any).autoCloseTimeout = setTimeout(() => {
+            if ((window as any).closeInfo) (window as any).closeInfo();
+        }, 12000);
         this.infoBox.style.display = 'block';
         
         // Üst-orta alana sabitle (Tek bir çubuk)
@@ -171,6 +180,12 @@ export class UIManager {
 }
 
 // Global functions for buttons in UIManager HTML
+(window as any).closeInfo = () => {
+    UIManager.hideInfo();
+    if ((UIManager as any).autoCloseTimeout) clearTimeout((UIManager as any).autoCloseTimeout);
+    window.dispatchEvent(new CustomEvent('clearBusStops'));
+};
+
 (window as any).prevPoi = () => {
     if (UIManager.activePoiList.length > 0) {
         UIManager.activePoiIndex = (UIManager.activePoiIndex - 1 + UIManager.activePoiList.length) % UIManager.activePoiList.length;
