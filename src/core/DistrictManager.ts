@@ -243,9 +243,9 @@ export class DistrictManager {
         container.id = 'district-right-sidebar';
         container.style.cssText = `
             position: fixed;
-            right: -300px;
+            right: 0;
             top: 80px;
-            width: 300px;
+            width: 300px; max-width: 300px; min-width: 300px;
             height: calc(100vh - 160px);
             background: rgba(10, 14, 26, 0.85);
             backdrop-filter: blur(24px);
@@ -285,11 +285,11 @@ export class DistrictManager {
             transition: all 0.2s ease;
             box-shadow: -4px 0 16px rgba(0,0,0,0.4);
         `;
-        toggleBtn.innerHTML = '&#8249;';
+        toggleBtn.innerHTML = '&#8250;';
         toggleBtn.onmouseenter = () => { toggleBtn.style.color = '#fff'; toggleBtn.style.background = 'rgba(30, 41, 59, 0.95)'; };
         toggleBtn.onmouseleave = () => { toggleBtn.style.color = '#94a3b8'; toggleBtn.style.background = 'rgba(10, 14, 26, 0.85)'; };
 
-        let open = false;
+        let open = true;
         toggleBtn.onclick = () => {
             open = !open;
             container.style.right = open ? '0' : '-300px';
@@ -460,7 +460,7 @@ export class DistrictManager {
             };
             const nameEl = document.createElement('span');
             nameEl.textContent = name;
-            nameEl.style.cssText = 'font-size:12px;color:#cbd5e1;font-weight:500;';
+            nameEl.style.cssText = 'font-size:12px;color:#cbd5e1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;';
             const badge = document.createElement('span');
             badge.textContent = String(count);
             badge.style.cssText = `background:rgba(99,179,237,0.15);color:#93c5fd;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid rgba(99,179,237,0.25);min-width:28px;text-align:center;`;
