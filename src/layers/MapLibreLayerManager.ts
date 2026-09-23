@@ -15,6 +15,8 @@ export const POI_LAYERS: LayerConfig[] = [
     { id: 'havaalanlari', endpoint: '/havaalani', name: 'Havaalanları', color: '#00aaff' },
     { id: 'kaplicalar', endpoint: '/kaplicalar', name: 'Kaplıcalar', color: '#ff6600' },
     { id: 'yetistirme', endpoint: '/yetistirmeyurtlari', name: 'Yetiştirme Yurtları', color: '#00ff88' },
+    { id: 'terminaller', endpoint: '/otobusterminalleri', name: 'Terminaller', color: '#ffff00' },
+    { id: 'cocukGenclik', endpoint: '/cocukvegenclikmerkezleri', name: 'Çocuk/Gençlik Merkezleri', color: '#ff66cc' },
     { id: 'aileDayanisma', endpoint: '/ailedayanismamerkezleri', name: 'Aile Dayanışma Merkezleri', color: '#aa00ff' },
     { id: 'meydanlar', endpoint: '/meydanlar', name: 'Meydanlar', color: '#ffffff' },
     { id: 'plajlar', endpoint: '/plajlar', name: 'Plajlar', color: '#00ffff' },
