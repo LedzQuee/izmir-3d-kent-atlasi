@@ -245,7 +245,7 @@ export class DistrictManager {
             position: fixed;
             right: 0;
             top: 80px;
-            width: 300px; max-width: 300px; min-width: 300px;
+            width: 300px; max-width: 300px; min-width: 300px; box-sizing: border-box; box-sizing: border-box;
             height: calc(100vh - 160px);
             background: rgba(10, 14, 26, 0.85);
             backdrop-filter: blur(24px);
@@ -431,7 +431,7 @@ export class DistrictManager {
 
         const listArea = document.createElement('div');
         listArea.id = 'district-rows';
-        listArea.style.cssText = `flex:1;overflow-y:auto;padding:10px 14px;`;
+        listArea.style.cssText = `flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 14px;box-sizing:border-box;`;
         listArea.innerHTML = `<style>#district-rows::-webkit-scrollbar{width:4px}#district-rows::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:4px}</style>`;
         container.appendChild(listArea);
         document.body.appendChild(container);
@@ -449,7 +449,7 @@ export class DistrictManager {
         sorted.forEach(([name, count]) => {
             if (count === 0) return;
             const row = document.createElement('div');
-            row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:3px;border-radius:8px;cursor:pointer;transition:background 0.15s;background:rgba(255,255,255,0.04);`;
+            row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:3px;border-radius:8px;cursor:pointer;transition:background 0.15s;background:rgba(255,255,255,0.04);box-sizing:border-box;width:100%;`;
             row.onmouseenter = () => { row.style.background = 'rgba(99,179,237,0.12)'; };
             row.onmouseleave = () => { row.style.background = 'rgba(255,255,255,0.04)'; };
             row.onclick = () => {
