@@ -39,52 +39,56 @@ export class MapLibreLayerManager {
         this.map = engine.map;
         
         this.markerManager = new HTMLMarkerManager(engine);
-
-        POI_LAYERS.forEach(c => this.activeLayerIds.add(c.id));
-
-        // Butun endpoint'lerden veri cek
-        const featurePromises = POI_LAYERS.map(async (config) => {
-            try {
-                const res = await ApiService.get(config.endpoint);
-                const records = res?.onemliyer ?? [];
-                
-                return records.map((r: any) => {
-                    const lat = parseFloat(r.ENLEM || r.enlem);
-                    const lng = parseFloat(r.BOYLAM || r.boylam);
-                    if (isNaN(lat) || isNaN(lng)) return null;
-
-                    const baseName = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
-                    const ilce = r.ILCE || r.Ilce || r.ilce;
-                    const finalName = ilce ? `${baseName} (${ilce})` : baseName;
-
-                    return {
-                        type: 'Feature',
-                        geometry: { type: 'Point', coordinates: [lng, lat] },
-                        properties: {
-                            layerId: config.id,
-                            layerName: config.name,
-                            color: config.color,
-                            recordName: finalName,
-                            recordRaw: JSON.stringify(r)
-                        }
-                    };
-                }).filter((f: any) => f !== null);
-            } catch (err) {
-                console.error(`Layer ${config.id} yuklenemedi:`, err);
-                return [];
-            }
-        });
-
-        const featureArrays = await Promise.all(featurePromises);
-        this.allFeatures = featureArrays.flat();
-        (window as any).allMapLibreFeatures = this.allFeatures;
-
-        this.updateData();
+        // Baslangicta hicbir katman otomatik cekilmiyor (Lazy load edilecek)
     }
 
-    static toggleLayer(layerId: string, visible: boolean) {
-        if (visible) this.activeLayerIds.add(layerId);
-        else this.activeLayerIds.delete(layerId);
+    static async loadLayerData(config: LayerConfig) {
+        if (this.allFeatures.some(f => f.properties.layerId === config.id)) return; // Onceden yuklendi
+
+        try {
+            const res = await ApiService.get(config.endpoint);
+            // onemliyer yoksa dizinin kendisi olabilecegini de hesaba katalim (ornek: afet toplanma vs.)
+            const records = Array.isArray(res) ? res : (res?.onemliyer ?? []);
+            
+            const newFeatures = records.map((r: any) => {
+                const lat = parseFloat(r.ENLEM || r.enlem);
+                const lng = parseFloat(r.BOYLAM || r.boylam);
+                if (isNaN(lat) || isNaN(lng)) return null;
+
+                const baseName = r.ADI || r.Adi || r.adi || r.ACIKLAMA || 'Bilinmiyor';
+                const ilce = r.ILCE || r.Ilce || r.ilce;
+                const finalName = ilce ? `${baseName} (${ilce})` : baseName;
+
+                return {
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [lng, lat] },
+                    properties: {
+                        layerId: config.id,
+                        layerName: config.name,
+                        color: config.color,
+                        recordName: finalName,
+                        recordRaw: JSON.stringify(r)
+                    }
+                };
+            }).filter((f: any) => f !== null);
+
+            this.allFeatures = [...this.allFeatures, ...newFeatures];
+            (window as any).allMapLibreFeatures = this.allFeatures;
+        } catch (err) {
+            console.error(`Layer ${config.id} yuklenemedi:`, err);
+        }
+    }
+
+    static async toggleLayer(layerId: string, visible: boolean) {
+        if (visible) {
+            this.activeLayerIds.add(layerId);
+            const config = POI_LAYERS.find(c => c.id === layerId);
+            if (config) {
+                await this.loadLayerData(config);
+            }
+        } else {
+            this.activeLayerIds.delete(layerId);
+        }
         this.updateData();
     }
 

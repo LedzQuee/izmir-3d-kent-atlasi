@@ -79,7 +79,7 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
   };
 
   items.forEach(item => {
-    const state = { visible: true };
+    const state = { visible: item.initialState !== undefined ? item.initialState : true };
     
     const row = document.createElement('div');
     // Kutucuk yok! Yuvarlakli ve estetik eski tasarim.
@@ -90,6 +90,13 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
 
     const label = document.createElement('span');
     label.textContent = (item.label || 'İsimsiz Katman');
+
+    // Baslangic durumu
+    row.style.opacity = state.visible ? '1' : '0.4';
+    dot.style.transform = state.visible ? 'scale(1)' : 'scale(0.5)';
+    if (state.visible) {
+        item.onToggle(state.visible);
+    }
 
     row.onclick = () => {
       state.visible = !state.visible;
@@ -123,6 +130,8 @@ export function createLegend(items: { label: string, color: string, onToggle: (c
     window.dispatchEvent(new CustomEvent('layerToggled'));
     updateToggleBtnState();
   };
+
+  updateToggleBtnState();
 
   legend.appendChild(content);
   document.body.appendChild(legend);

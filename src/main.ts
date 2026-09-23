@@ -30,7 +30,7 @@ const engine = new Engine();
 
 // Efsaneyi (Legend) dinamik olustur
 const legendItems = [
-    { label: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', onToggle: (v: boolean) => {
+    { label: 'Yakın Otobüs Durakları (Haritaya Tıklayın)', color: '#00ffaa', initialState: false, onToggle: (v: boolean) => {
         UIManager.busStopMode = v;
         if(!v && window.engineInstance) { 
             clearNearestStops(window.engineInstance.scene); 
@@ -43,7 +43,7 @@ POI_LAYERS.forEach(config => {
         id: config.id,
         color: config.color,
         label: config.name,
-        initialState: true,
+        initialState: false, // Hiz icin kapali gelir
         onToggle: (v: boolean) => {
             MapLibreLayerManager.toggleLayer(config.id, v);
         }
