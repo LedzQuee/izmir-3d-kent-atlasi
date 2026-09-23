@@ -122,6 +122,11 @@ export class Engine {
             style,
             center: [KONAK_CENTER.lng, KONAK_CENTER.lat] as [number, number],
             zoom: 12.5,
+            minZoom: 8,
+            maxBounds: [
+                [26.1, 37.8], // Guneybati kosesi (SW)
+                [28.5, 39.3]  // Kuzeydogu kosesi (NE)
+            ],
             pitch: 60,
             bearing: -20,
             maxPitch: 85,
