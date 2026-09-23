@@ -65,7 +65,7 @@ export class Engine {
                     type: 'raster',
                     tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
                     tileSize: 256,
-                    maxzoom: 19,
+                    maxzoom: 17, // 18 ve ustu zoomlarda Esri map data not available resmi dondurdugu icin 17 de sabitleyip resmi buyuturuz
                     attribution: '(c) Esri'
                 },
                 'ofm': {
