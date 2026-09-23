@@ -300,8 +300,8 @@ export class DistrictManager {
         const header = document.createElement('div');
         header.style.cssText = `padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;`;
         header.innerHTML = `
-            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#64748b;text-transform:uppercase;margin-bottom:4px">Veri Dagilimi</div>
-            <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:12px;">Ilce Siralamasi</div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#64748b;text-transform:uppercase;margin-bottom:4px">Veri Dağılımı</div>
+            <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:12px;">İlçe Sıralaması</div>
         `;
         container.appendChild(header);
 
@@ -334,7 +334,7 @@ export class DistrictManager {
                 // @ts-ignore
                 const allFeatures = window.allMapLibreFeatures || [];
                 
-                // --- EKRANA GORE FILTRELEME (VIEWPORT FILTER) ---
+                // --- EKRANA GORE FILTİRELEME (VIEWPORT FILTER) ---
                 // Eger zoom > 12.5 ise sadece ekranda gorunen alandaki verileri arar
                 // @ts-ignore
                 const map = window.engineInstance?.map;
