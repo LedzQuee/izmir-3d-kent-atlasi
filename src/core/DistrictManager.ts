@@ -243,10 +243,10 @@ export class DistrictManager {
         container.id = 'district-right-sidebar';
         container.style.cssText = `
             position: fixed;
-            right: 0;
-            top: 80px;
+            right: 0px;
+            top: 20px;
+            bottom: 20px;
             width: 300px;
-            height: calc(100vh - 160px);
             background: rgba(10, 14, 26, 0.85);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
@@ -289,10 +289,10 @@ export class DistrictManager {
         toggleBtn.onmouseenter = () => { toggleBtn.style.color = '#fff'; toggleBtn.style.background = 'rgba(30, 41, 59, 0.95)'; };
         toggleBtn.onmouseleave = () => { toggleBtn.style.color = '#94a3b8'; toggleBtn.style.background = 'rgba(10, 14, 26, 0.85)'; };
 
-        let open = true;
+        let open = false;
         toggleBtn.onclick = () => {
             open = !open;
-            container.style.right = open ? '0' : '-300px';
+            container.style.right = open ? '0px' : '-300px';
             toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
         };
         container.appendChild(toggleBtn);
