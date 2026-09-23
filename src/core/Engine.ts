@@ -86,18 +86,27 @@ export class Engine {
                     type: 'fill-extrusion',
                     source: 'ofm',
                     'source-layer': 'building',
-                    minzoom: 13,
+                    minzoom: 14,
                     paint: {
-                        'fill-extrusion-color': [
-                            'interpolate', ['linear'], ['get', 'render_height'],
-                            0, '#f8fafc', 
-                            15, '#e2e8f0', 
-                            30, '#cbd5e1', 
-                            50, '#94a3b8'
+                        // Eğer binanın yüksekliği yoksa gri renkte boyar.
+                        'fill-extrusion-color': '#e2e8f0',
+                        
+                        // Önce 'render_height' dener, yoksa 'height', yoksa rastgele gibi görünmesi için sabit 10 metre atar
+                        'fill-extrusion-height': [
+                            'coalesce',
+                            ['get', 'render_height'],
+                            ['get', 'height'],
+                            15
                         ],
-                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
-                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': 0.9,
+                        
+                        'fill-extrusion-base': [
+                            'coalesce',
+                            ['get', 'render_min_height'],
+                            ['get', 'min_height'],
+                            0
+                        ],
+                        
+                        'fill-extrusion-opacity': 0.85,
                         'fill-extrusion-vertical-gradient': true
                     }
                 }
