@@ -43,7 +43,7 @@ POI_LAYERS.forEach(config => {
         id: config.id,
         color: config.color,
         label: config.name,
-        initialState: false, // Hiz icin kapali gelir
+        initialState: true,
         onToggle: (v: boolean) => {
             MapLibreLayerManager.toggleLayer(config.id, v);
         }
