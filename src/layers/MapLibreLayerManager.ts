@@ -15,14 +15,12 @@ export const POI_LAYERS: LayerConfig[] = [
     { id: 'havaalanlari', endpoint: '/havaalani', name: 'Havaalanları', color: '#00aaff' },
     { id: 'kaplicalar', endpoint: '/kaplicalar', name: 'Kaplıcalar', color: '#ff6600' },
     { id: 'yetistirme', endpoint: '/yetistirmeyurtlari', name: 'Yetiştirme Yurtları', color: '#00ff88' },
-    { id: 'terminaller', endpoint: '/terminaller', name: 'Terminaller', color: '#ffff00' },
-    { id: 'cocukGenclik', endpoint: '/cocukgenclikmerkezi', name: 'Çocuk/Gençlik Merkezleri', color: '#ff66cc' },
-    { id: 'aileDayanisma', endpoint: '/ailedayanismamerkezi', name: 'Aile Dayanışma Merkezleri', color: '#aa00ff' },
+    { id: 'aileDayanisma', endpoint: '/ailedayanismamerkezleri', name: 'Aile Dayanışma Merkezleri', color: '#aa00ff' },
     { id: 'meydanlar', endpoint: '/meydanlar', name: 'Meydanlar', color: '#ffffff' },
     { id: 'plajlar', endpoint: '/plajlar', name: 'Plajlar', color: '#00ffff' },
-    { id: 'huzurevleri', endpoint: '/huzurevi', name: 'Huzurevleri', color: '#ff3333' },
-    { id: 'toplum', endpoint: '/toplummerkezi', name: 'Toplum Merkezleri', color: '#cc8833' },
-    { id: 'izbb', endpoint: '/izmirbuyuksehirbelediyesihizmetnoktalari', name: 'İzBB Hizmet Noktaları', color: '#0000aa' },
+    { id: 'huzurevleri', endpoint: '/huzurevleri', name: 'Huzurevleri', color: '#ff3333' },
+    { id: 'toplum', endpoint: '/toplummerkezleri', name: 'Toplum Merkezleri', color: '#cc8833' },
+    { id: 'izbb', endpoint: '/izbbhizmetnoktalari', name: 'İzBB Hizmet Noktaları', color: '#0000aa' },
     { id: 'taksiler', endpoint: '/taksiduraklari', name: 'Taksi Durakları', color: '#ffcc00' },
     { id: 'afet', endpoint: '/afetaciltoplanmaalani', name: 'Afet Toplanma Alanları', color: '#00ff00' }
 ];
