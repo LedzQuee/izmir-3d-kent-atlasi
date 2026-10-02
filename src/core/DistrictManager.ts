@@ -244,9 +244,9 @@ export class DistrictManager {
         container.style.cssText = `
             position: fixed;
             right: 0;
-            top: 80px;
-            width: 300px; max-width: 300px; min-width: 300px; box-sizing: border-box; box-sizing: border-box;
-            height: calc(100vh - 160px);
+            top: 50%;
+            width: 300px; max-width: 300px; min-width: 300px; box-sizing: border-box;
+            height: 70vh;
             background: rgba(10, 14, 26, 0.85);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
@@ -258,7 +258,8 @@ export class DistrictManager {
             z-index: 500;
             display: flex;
             flex-direction: column;
-            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(-50%) translateX(0);
             box-shadow: -8px 0 32px rgba(0,0,0,0.5);
         `;
 
@@ -292,13 +293,13 @@ export class DistrictManager {
         let open = true;
         toggleBtn.onclick = () => {
             open = !open;
-            container.style.right = open ? '0' : '-300px';
+            container.style.transform = open ? 'translateY(-50%) translateX(0)' : 'translateY(-50%) translateX(299px)';
             toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
         };
         container.appendChild(toggleBtn);
 
         const header = document.createElement('div');
-        header.style.cssText = `padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;`;
+        header.style.cssText = `padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;box-sizing:border-box;`;
         header.innerHTML = `
             <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#64748b;text-transform:uppercase;margin-bottom:4px">Veri Dağılımı</div>
             <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:12px;">İlçe Sıralaması</div>
@@ -307,7 +308,7 @@ export class DistrictManager {
 
         // --- ARAMA KUTUSU ---
         const searchContainer = document.createElement('div');
-        searchContainer.style.cssText = 'position: relative; margin-top: 10px;';
+        searchContainer.style.cssText = 'position: relative; margin-top: 10px; box-sizing:border-box;';
         
         const searchInput = document.createElement('input');
         searchInput.type = 'text';
@@ -449,7 +450,7 @@ export class DistrictManager {
         sorted.forEach(([name, count]) => {
             if (count === 0) return;
             const row = document.createElement('div');
-            row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:3px;border-radius:8px;cursor:pointer;transition:background 0.15s;background:rgba(255,255,255,0.04);box-sizing:border-box;width:100%;`;
+            row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:3px;border-radius:8px;cursor:pointer;transition:background 0.15s;background:rgba(255,255,255,0.04);box-sizing:border-box;`;
             row.onmouseenter = () => { row.style.background = 'rgba(99,179,237,0.12)'; };
             row.onmouseleave = () => { row.style.background = 'rgba(255,255,255,0.04)'; };
             row.onclick = () => {
@@ -460,7 +461,7 @@ export class DistrictManager {
             };
             const nameEl = document.createElement('span');
             nameEl.textContent = name;
-            nameEl.style.cssText = 'font-size:12px;color:#cbd5e1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;';
+            nameEl.style.cssText = 'font-size:12px;color:#cbd5e1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;margin-right:10px;';
             const badge = document.createElement('span');
             badge.textContent = String(count);
             badge.style.cssText = `background:rgba(99,179,237,0.15);color:#93c5fd;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid rgba(99,179,237,0.25);min-width:28px;text-align:center;`;
